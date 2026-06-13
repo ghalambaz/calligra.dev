@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://calligra.dev/sitemap-index.xml

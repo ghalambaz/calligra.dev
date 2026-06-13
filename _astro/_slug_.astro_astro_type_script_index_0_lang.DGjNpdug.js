@@ -1,0 +1,1 @@
+import{t as n}from"./theme.D3Ebnli7.js";const o=document.documentElement.dataset.theme;n(o);const t=document.getElementById("progress");t&&window.addEventListener("scroll",()=>{const e=document.documentElement.scrollHeight-window.innerHeight;t.style.width=e>0?`${Math.min(window.scrollY/e*100,100)}%`:"0%"},{passive:!0});
