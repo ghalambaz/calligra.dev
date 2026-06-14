@@ -1,0 +1,1 @@
+import{u as t,t as m}from"./theme.D3Ebnli7.js";const o=document.getElementById("toggle-theme-button"),n=()=>document.documentElement.dataset.theme;o?.addEventListener("click",()=>{const e=n()==="dark"?"light":"dark";document.documentElement.dataset.theme=e,localStorage.setItem("theme",e),t(),m(e)});m(n()||"light");t();
