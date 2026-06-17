@@ -30,8 +30,8 @@
     h2          { font-size: 1.5rem; font-weight: 700; margin-top: 2em; }
     h3          { font-size: 1.2rem; font-weight: 600; margin-top: 1.5em; }
     p           { margin: 1em 0; }
-    .code-block { background: #f4f4f4; padding: 1em; border-radius: 4px; overflow-x: auto;
-                  font-family: monospace; font-size: 0.9em; white-space: normal; }
+    pre         { background: #f4f4f4; padding: 1em; border-radius: 4px; overflow-x: auto; }
+    code        { font-family: monospace; font-size: 0.9em; }
     blockquote  { border-left: 3px solid #ccc; margin: 1em 0; padding-left: 1em; color: #555; }
     img         { max-width: 100%; height: auto; display: block; margin: 1.5em 0; }
     a           { color: #1a8917; }
@@ -61,7 +61,7 @@
 <hr>
 <h2>The Goal</h2>
 <p>I wanted a publishing workflow that looked like this:</p>
-<div class="code-block">Notion → Calligra → Personal Blog + Dev.to + Hashnode + Medium</div>
+<pre><code class="language-plaintext">Notion → Calligra → Personal Blog + Dev.to + Hashnode + Medium</code></pre>
 <p>Write once.</p>
 <p>Publish everywhere.</p>
 <p>Keep my own domain as the source of truth.</p>
@@ -69,7 +69,9 @@
 <hr>
 <h2>What Is Calligra?</h2>
 <p>Calligra is an open-source CLI tool that takes content from Notion and publishes it to multiple destinations with a single command.</p>
-<div class="code-block">make sync<br>make build<br>make publish</div>
+<pre><code class="language-bash">make sync
+make build
+make publish</code></pre>
 <p>Behind the scenes, Calligra:</p>
 <ul>
 <li>Fetches content from the Notion API</li>
@@ -79,15 +81,25 @@
 <li>Sets canonical URLs back to your own website</li>
 </ul>
 <p>The goal is simple:</p>
-<blockquote>
-<p>Your personal blog owns the content. Other platforms help distribute it.</p>
-</blockquote>
+<blockquote>Your personal blog owns the content. Other platforms help distribute it.</blockquote>
 <hr>
 <h2>Screenshot: Publishing Workflow</h2>
 <hr>
 <p><img src="https://calligra.dev/images/blog/from-notion-to-everywhere-building-calligra/asset-1.png" alt="Blog Asset"></p>
 <h2>Content Flow</h2>
-<div class="code-block">┌──────────┐<br>│  Notion  │<br>└────┬─────┘<br>     │<br>     ▼<br>┌──────────┐<br>│ Calligra │<br>└────┬─────┘<br>     │<br>     ├──► Personal Blog<br>     ├──► Dev.to<br>     ├──► Hashnode<br>     └──► Medium</div>
+<pre><code class="language-plaintext">┌──────────┐
+│  Notion  │
+└────┬─────┘
+     │
+     ▼
+┌──────────┐
+│ Calligra │
+└────┬─────┘
+     │
+     ├──► Personal Blog
+     ├──► Dev.to
+     ├──► Hashnode
+     └──► Medium</code></pre>
 <hr>
 <h2>The Story Behind the Name</h2>
 <p>Before the code, there is the name.</p>
@@ -98,9 +110,7 @@
 <h3>The Heritage</h3>
 <p>My family name is <strong>Ghalambaz (قلم‌باز)</strong>.</p>
 <p>A rough translation would be:</p>
-<blockquote>
-<p>&quot;Pen player.&quot;</p>
-</blockquote>
+<blockquote>&quot;Pen player.&quot;</blockquote>
 <p>Historically, it referred to someone who practiced writing as both a craft and an art.</p>
 <p>Someone who enjoyed working with words.</p>
 <p>When I built a tool dedicated entirely to writing and publishing, the name felt inevitable.</p>
@@ -110,8 +120,7 @@
 <p>Although Calligra started as a personal tool, I built it to be useful for other developers as well.</p>
 <p>If you write in Notion or anywhere else and publish technical content, you might find it useful.</p>
 <p>The project is open source, and contributions, feedback, and ideas are always welcome.</p>
-<p><strong>Repository:</strong></p>
-<p><a href="https://github.com/ghalambaz/Calligra.git">link_preview</a></p>
+<p><strong>Repository:</strong>  <a href="https://github.com/ghalambaz/Calligra"><strong>Ghalambaz/Calligra</strong></a> </p>
 <hr>
 <h2>Why Start This Blog?</h2>
 <p>Calligra solves the publishing problem.</p>

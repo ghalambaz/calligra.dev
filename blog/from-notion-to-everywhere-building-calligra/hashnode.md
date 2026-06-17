@@ -150,9 +150,7 @@ If you write in Notion or anywhere else and publish technical content, you might
 
 The project is open source, and contributions, feedback, and ideas are always welcome.
 
-**Repository:**
-
-[link_preview](https://github.com/ghalambaz/Calligra.git)
+**Repository:**  [**Ghalambaz/Calligra**](https://github.com/ghalambaz/Calligra) 
 
 ---
 
