@@ -30,8 +30,8 @@
     h2          { font-size: 1.5rem; font-weight: 700; margin-top: 2em; }
     h3          { font-size: 1.2rem; font-weight: 600; margin-top: 1.5em; }
     p           { margin: 1em 0; }
-    pre         { background: #f4f4f4; padding: 1em; border-radius: 4px; overflow-x: auto; }
-    code        { font-family: monospace; font-size: 0.9em; }
+    .code-block { background: #f4f4f4; padding: 1em; border-radius: 4px; overflow-x: auto;
+                  font-family: monospace; font-size: 0.9em; white-space: normal; }
     blockquote  { border-left: 3px solid #ccc; margin: 1em 0; padding-left: 1em; color: #555; }
     img         { max-width: 100%; height: auto; display: block; margin: 1.5em 0; }
     a           { color: #1a8917; }
@@ -61,8 +61,7 @@
 <hr>
 <h2>The Goal</h2>
 <p>I wanted a publishing workflow that looked like this:</p>
-<pre><code class="language-plaintext">Notion → Calligra → Personal Blog + Dev.to + Hashnode + Medium
-</code></pre>
+<div class="code-block">Notion → Calligra → Personal Blog + Dev.to + Hashnode + Medium</div>
 <p>Write once.</p>
 <p>Publish everywhere.</p>
 <p>Keep my own domain as the source of truth.</p>
@@ -70,10 +69,7 @@
 <hr>
 <h2>What Is Calligra?</h2>
 <p>Calligra is an open-source CLI tool that takes content from Notion and publishes it to multiple destinations with a single command.</p>
-<pre><code class="language-bash">make sync
-make build
-make publish
-</code></pre>
+<div class="code-block">make sync<br>make build<br>make publish</div>
 <p>Behind the scenes, Calligra:</p>
 <ul>
 <li>Fetches content from the Notion API</li>
@@ -91,20 +87,7 @@ make publish
 <hr>
 <p><img src="https://calligra.dev/images/blog/from-notion-to-everywhere-building-calligra/asset-1.png" alt="Blog Asset"></p>
 <h2>Content Flow</h2>
-<pre><code class="language-plaintext">┌──────────┐
-│  Notion  │
-└────┬─────┘
-     │
-     ▼
-┌──────────┐
-│ Calligra │
-└────┬─────┘
-     │
-     ├──► Personal Blog
-     ├──► Dev.to
-     ├──► Hashnode
-     └──► Medium
-</code></pre>
+<div class="code-block">┌──────────┐<br>│  Notion  │<br>└────┬─────┘<br>     │<br>     ▼<br>┌──────────┐<br>│ Calligra │<br>└────┬─────┘<br>     │<br>     ├──► Personal Blog<br>     ├──► Dev.to<br>     ├──► Hashnode<br>     └──► Medium</div>
 <hr>
 <h2>The Story Behind the Name</h2>
 <p>Before the code, there is the name.</p>
