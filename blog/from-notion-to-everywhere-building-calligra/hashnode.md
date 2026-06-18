@@ -208,4 +208,4 @@ See you in the next post.
 
 **Mohammad Ghalambaz**
 
-_Backend Developer writing at Calligra.dev_
+_writing at Calligra.dev_
