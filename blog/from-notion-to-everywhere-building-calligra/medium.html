@@ -61,14 +61,14 @@
 <hr>
 <h2>The Goal</h2>
 <p>I wanted a publishing workflow that looked like this:</p>
-<pre data-code-block-mode="1" data-code-block-lang="plaintext" class="graf graf--pre"><span class="pre--content"><span class="graf graf--pre">Notion → Calligra → Personal Blog + Dev.to + Hashnode + Medium</span></span></pre><p>Write once.</p>
+<pre data-code-block-lang="plaintext"><span class="pre--content"><span class="pre--content">Notion → Calligra → Personal Blog + Dev.to + Hashnode + Medium</span></span></pre><p>Write once.</p>
 <p>Publish everywhere.</p>
 <p>Keep my own domain as the source of truth.</p>
 <p>That simple idea became Calligra.</p>
 <hr>
 <h2>What Is Calligra?</h2>
 <p>Calligra is an open-source CLI tool that takes content from Notion and publishes it to multiple destinations with a single command.</p>
-<pre data-code-block-mode="1" data-code-block-lang="bash" class="graf graf--pre"><span class="pre--content"><span class="graf graf--pre">make sync</span><br><span class="graf graf--pre">make build</span><br><span class="graf graf--pre">make publish</span></span></pre><p>Behind the scenes, Calligra:</p>
+<pre data-code-block-lang="bash"><span class="pre--content"><span class="pre--content">make sync</span><br><span class="pre--content">make build</span><br><span class="pre--content">make publish</span></span></pre><p>Behind the scenes, Calligra:</p>
 <ul>
 <li>Fetches content from the Notion API</li>
 <li>Converts the content into platform-specific formats</li>
@@ -77,13 +77,12 @@
 <li>Sets canonical URLs back to your own website</li>
 </ul>
 <p>The goal is simple:</p>
-<blockquote>Your personal blog owns the content. Other platforms help distribute it.</blockquote>
-<hr>
+<blockquote>Your personal blog owns the content. Other platforms help distribute it.</blockquote><hr>
 <h2>Screenshot: Publishing Workflow</h2>
 <hr>
 <p><img src="https://calligra.dev/images/blog/from-notion-to-everywhere-building-calligra/asset-1.png" alt="Blog Asset"></p>
 <h2>Content Flow</h2>
-<pre data-code-block-mode="1" data-code-block-lang="plaintext" class="graf graf--pre"><span class="pre--content"><span class="graf graf--pre">┌──────────┐</span><br><span class="graf graf--pre">│  Notion  │</span><br><span class="graf graf--pre">└────┬─────┘</span><br><span class="graf graf--pre">     │</span><br><span class="graf graf--pre">     ▼</span><br><span class="graf graf--pre">┌──────────┐</span><br><span class="graf graf--pre">│ Calligra │</span><br><span class="graf graf--pre">└────┬─────┘</span><br><span class="graf graf--pre">     │</span><br><span class="graf graf--pre">     ├──► Personal Blog</span><br><span class="graf graf--pre">     ├──► Dev.to</span><br><span class="graf graf--pre">     ├──► Hashnode</span><br><span class="graf graf--pre">     └──► Medium</span></span></pre><hr>
+<pre data-code-block-lang="plaintext"><span class="pre--content"><span class="pre--content">┌──────────┐</span><br><span class="pre--content">│  Notion  │</span><br><span class="pre--content">└────┬─────┘</span><br><span class="pre--content">     │</span><br><span class="pre--content">     ▼</span><br><span class="pre--content">┌──────────┐</span><br><span class="pre--content">│ Calligra │</span><br><span class="pre--content">└────┬─────┘</span><br><span class="pre--content">     │</span><br><span class="pre--content">     ├──► Personal Blog</span><br><span class="pre--content">     ├──► Dev.to</span><br><span class="pre--content">     ├──► Hashnode</span><br><span class="pre--content">     └──► Medium</span></span></pre><hr>
 <h2>The Story Behind the Name</h2>
 <p>Before the code, there is the name.</p>
 <h3>The Craft</h3>
@@ -93,8 +92,7 @@
 <h3>The Heritage</h3>
 <p>My family name is <strong>Ghalambaz (قلم‌باز)</strong>.</p>
 <p>A rough translation would be:</p>
-<blockquote>&quot;Pen player.&quot;</blockquote>
-<p>Historically, it referred to someone who practiced writing as both a craft and an art.</p>
+<blockquote>&quot;Pen player.&quot;</blockquote><p>Historically, it referred to someone who practiced writing as both a craft and an art.</p>
 <p>Someone who enjoyed working with words.</p>
 <p>When I built a tool dedicated entirely to writing and publishing, the name felt inevitable.</p>
 <p>Calligra connects a modern publishing workflow with a much older tradition of writing.</p>
