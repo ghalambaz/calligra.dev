@@ -61,14 +61,16 @@
 <hr>
 <h2>The Goal</h2>
 <p>I wanted a publishing workflow that looked like this:</p>
-<pre><p >Notion → Calligra → Personal Blog + Dev.to + Hashnode + Medium</p></pre><p>Write once.</p>
+<pre>Notion → Calligra → Personal Blog + Dev.to + Hashnode + Medium</pre><p>Write once.</p>
 <p>Publish everywhere.</p>
 <p>Keep my own domain as the source of truth.</p>
 <p>That simple idea became Calligra.</p>
 <hr>
 <h2>What Is Calligra?</h2>
 <p>Calligra is an open-source CLI tool that takes content from Notion and publishes it to multiple destinations with a single command.</p>
-<pre><p >make sync</p><br><p >make build</p><br><p >make publish</p></pre><p>Behind the scenes, Calligra:</p>
+<pre>make sync
+make build
+make publish</pre><p>Behind the scenes, Calligra:</p>
 <ul>
 <li>Fetches content from the Notion API</li>
 <li>Converts the content into platform-specific formats</li>
@@ -82,7 +84,19 @@
 <hr>
 <p><img src="https://calligra.dev/images/blog/from-notion-to-everywhere-building-calligra/asset-1.png" alt="Blog Asset"></p>
 <h2>Content Flow</h2>
-<pre><p >┌──────────┐</p><br><p >│  Notion  │</p><br><p >└────┬─────┘</p><br><p >     │</p><br><p >     ▼</p><br><p >┌──────────┐</p><br><p >│ Calligra │</p><br><p >└────┬─────┘</p><br><p >     │</p><br><p >     ├──► Personal Blog</p><br><p >     ├──► Dev.to</p><br><p >     ├──► Hashnode</p><br><p >     └──► Medium</p></pre><hr>
+<pre>┌──────────┐
+│  Notion  │
+└────┬─────┘
+     │
+     ▼
+┌──────────┐
+│ Calligra │
+└────┬─────┘
+     │
+     ├──► Personal Blog
+     ├──► Dev.to
+     ├──► Hashnode
+     └──► Medium</pre><hr>
 <h2>The Story Behind the Name</h2>
 <p>Before the code, there is the name.</p>
 <h3>The Craft</h3>
