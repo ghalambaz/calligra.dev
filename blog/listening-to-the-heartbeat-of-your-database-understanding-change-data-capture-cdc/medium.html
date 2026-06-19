@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Listening to the Heartbeat of Your Database: Understanding Change Data Capture (CDC)</title>
+  <!--
+    MEDIUM PUBLISH INSTRUCTIONS
+    ══════════════════════════════════════════════════════
+    1. Open this file in your browser (File > Open, or drag it in).
+    2. Press Ctrl+A (Cmd+A on Mac) to select everything, then Ctrl+C to copy.
+    3. Go to medium.com → Write a story → click into the editor → Ctrl+V to paste.
+    4. After pasting, set:
+       • Title: Listening to the Heartbeat of Your Database: Understanding Change Data Capture (CDC)
+       • Subtitle / description: 
+       • Tags (up to 5): cdc, database, mysql, mongodb, postgresql
+    5. Before publishing → "..." menu → "Change display title/subtitle"
+    6. Set "Originally published at": https://calligra.dev/blog/listening-to-the-heartbeat-of-your-database-understanding-change-data-capture-cdc
+    7. Cover image: No cover — upload manually via the Medium cover tool.
+    ══════════════════════════════════════════════════════
+  -->
+  <style>
+    /*
+     * These styles only affect local preview in your browser.
+     * Medium strips all CSS when you paste — that's expected.
+     */
+    body        { font-family: Georgia, serif; max-width: 740px; margin: 40px auto; line-height: 1.75; color: #292929; }
+    h1          { font-size: 2rem; font-weight: 700; margin-bottom: 0.25em; }
+    h2          { font-size: 1.5rem; font-weight: 700; margin-top: 2em; }
+    h3          { font-size: 1.2rem; font-weight: 600; margin-top: 1.5em; }
+    p           { margin: 1em 0; }
+    pre         { background: #f4f4f4; padding: 1em; border-radius: 4px; overflow-x: auto; }
+    code        { font-family: monospace; font-size: 0.9em; }
+    blockquote  { border-left: 3px solid #ccc; margin: 1em 0; padding-left: 1em; color: #555; }
+    img         { max-width: 100%; height: auto; display: block; margin: 1.5em 0; }
+    a           { color: #1a8917; }
+  </style>
+</head>
+<body>
+  <h1>Listening to the Heartbeat of Your Database: Understanding Change Data Capture (CDC)</h1>
+<h1></h1>
+<em>CDC stands for <strong>Change Data Capture</strong>.</em><h2>What You Will Learn</h2>
+<ul>
+<li>What CDC is</li>
+<li>The story behind it</li>
+<li>How it works internally</li>
+<li>Common use cases</li>
+<li>A simplified implementation example</li>
+</ul>
+<p><strong>Estimated reading time:</strong> 10–15 minutes</p>
+<hr>
+<h1>What Is CDC?</h1>
+<p>Change Data Capture (CDC) is a technique for capturing changes made to data and exposing those changes to external systems.</p>
+<p>Instead of repeatedly querying a database to check whether something has changed, CDC allows applications to consume a stream of inserts, updates, and deletes as they happen.</p>
+<p>Think of CDC as a way to listen to the heartbeat of your database.</p>
+<p>Every time data changes, the database records that change internally. CDC makes those changes available so that other systems can react to them in real time.</p>
+<hr>
+<h1>The Story Behind CDC</h1>
+<p>To understand CDC, it helps to understand how databases have worked for decades.</p>
+<p>Whenever data changes, databases do not simply overwrite the old value and move on. They maintain an internal record of operations that have occurred.</p>
+<p>These records are commonly stored in transaction logs.</p>
+<p>Historically, every database implemented these logs differently, but the purpose was always the same:</p>
+<ul>
+<li>Record every change made to the database</li>
+<li>Recover from failures</li>
+<li>Replicate data to other nodes</li>
+<li>Maintain consistency</li>
+</ul>
+<p>Every insert, update, and delete operation generates a log entry.</p>
+<p>These entries are ordered and identified by a unique position or token.</p>
+<p>The ordering is critical.</p>
+<p>Imagine the following sequence:</p>
+<ol>
+<li>Create User</li>
+<li>Update User</li>
+<li>Delete User</li>
+</ol>
+<p>If a replica applied these operations in a different order, it would end up with completely different data.</p>
+<p>Because these logs are ordered, databases can reliably replay changes and reconstruct state over time.</p>
+<p>This is how replication works in many database systems.</p>
+<p>A replica typically starts with an initial snapshot and then continuously applies new changes by replaying the transaction log.</p>
+<hr>
+<h1>Where CDC Comes In</h1>
+<p>Originally, these logs were intended for the database itself.</p>
+<p>CDC extends that idea by allowing external applications to consume those same changes.</p>
+<p>Instead of only replicas reading database changes, your applications can read them too.</p>
+<p>This means that whenever data changes, you can react immediately without constantly querying the database.</p>
+<p>The underlying idea is simple:</p>
+<em>Expose an ordered stream of database changes that external systems can consume reliably.</em><hr>
+<h1>How CDC Works</h1>
+<p>Different databases implement CDC differently, but the concept remains the same.</p>
+<h3>MongoDB</h3>
+<p>MongoDB provides CDC through <strong>Change Streams</strong>.</p>
+<p>Each event contains a <strong>resume token</strong>, which allows consumers to continue reading from the last processed change after a restart or failure.</p>
+<h3>MySQL</h3>
+<p>MySQL exposes changes through its <strong>Binary Log (Binlog)</strong>.</p>
+<p>CDC tools can read the binlog and transform database operations into events.</p>
+<h3>PostgreSQL</h3>
+<p>PostgreSQL provides CDC through <strong>Logical Decoding</strong> and <strong>Logical Replication</strong>.</p>
+<p>These mechanisms allow applications to consume database changes in order.</p>
+<p>Although the implementations differ, they all provide the same capability:</p>
+<em>An ordered stream of database changes.</em><hr>
+<h1>CDC Is Usually Pull-Based</h1>
+<p>One common misconception is that databases push changes directly to your application.</p>
+<p>In reality, most CDC implementations are fundamentally pull-based.</p>
+<p>The consumer requests the next available change from the database.</p>
+<p>However, applications typically maintain a long-lived connection or cursor, making the experience feel very similar to receiving pushed events.</p>
+<p>For example, MongoDB&#39;s <code>watch()</code> API keeps a stream open and continuously delivers new events as they become available.</p>
+<p>From the application&#39;s perspective, it feels real-time.</p>
+<hr>
+<h1>A Simplified CDC Example</h1>
+<p>To understand the concept, imagine that every database change is converted into a standardized event.</p>
+<pre>function captureDataChange($operation, $table, $id, $before, $after)
+{
+    $cdcEvent = [
+        "metadata" => [
+            "operation" => $operation,
+            "table" => $table,
+            "id" => $id
+        ],
+        "before" => $before,
+        "after" => $after
+    ];
+
+    echo "Streaming event: " . json_encode($cdcEvent) . PHP_EOL;
+}
+
+captureDataChange(
+    "UPDATE",
+    "users",
+    42,
+    ["name" => "Alice", "role" => "Developer"],
+    ["name" => "Alice", "role" => "Architect"]
+);</pre><p>Output:</p>
+<pre>{
+  "metadata": {
+    "operation": "UPDATE",
+    "table": "users",
+    "id": 42
+  },
+  "before": {
+    "name": "Alice",
+    "role": "Developer"
+  },
+  "after": {
+    "name": "Alice",
+    "role": "Architect"
+  }
+}</pre><p>Real CDC systems work differently under the hood, but the idea is very similar:</p>
+<ol>
+<li>Detect a database change</li>
+<li>Convert it into an event</li>
+<li>Publish it to interested consumers</li>
+</ol>
+<hr>
+<h1>CDC vs Traditional Polling</h1>
+<p>Without CDC, applications often use polling.</p>
+<p>For example:</p>
+<pre>SELECT *
+FROM orders
+WHERE updated_at > :last_seen_timestamp;</pre><p>This approach works, but it has drawbacks:</p>
+<ul>
+<li>Additional load on the database</li>
+<li>Expensive queries at scale</li>
+<li>Possibility of missing updates</li>
+<li>Duplicate processing logic</li>
+</ul>
+<p>CDC avoids these problems by consuming changes directly from the database&#39;s change stream.</p>
+<p>Instead of repeatedly asking:</p>
+<em>&quot;Has anything changed?&quot;</em><p>the database tells you:</p>
+<em>&quot;This is what changed.&quot;</em><hr>
+<h1>Why CDC Matters</h1>
+<p>CDC is more than a database feature.</p>
+<p>It is an architectural building block.</p>
+<p>Once database changes become events, many new possibilities emerge.</p>
+<p>Common use cases include:</p>
+<ul>
+<li>Search index synchronization (Elasticsearch/OpenSearch)</li>
+<li>Analytics pipelines</li>
+<li>Event-driven architectures</li>
+<li>Cache invalidation</li>
+<li>Audit trails</li>
+<li>Data warehouse synchronization</li>
+<li>Building materialized views</li>
+<li>Synchronizing data across services</li>
+</ul>
+<p>For example, when a product is updated in your database, a CDC consumer can automatically update:</p>
+<ul>
+<li>Search indexes</li>
+<li>Caches</li>
+<li>Reporting systems</li>
+<li>Recommendation engines</li>
+</ul>
+<p>without requiring changes to the original application.</p>
+<hr>
+<h1>CDC in Modern Architectures</h1>
+<p>Many organizations use CDC platforms such as Debezium to provide a unified way of consuming changes across different databases.</p>
+<p>These platforms often publish CDC events into systems such as Apache Kafka, where multiple consumers can process the same stream independently.</p>
+<p>This makes CDC a key building block in modern event-driven systems.</p>
+<hr>
+<h1>Final Thoughts</h1>
+<p>At its core, CDC is a simple idea:</p>
+<em>Every database change is already being recorded somewhere. CDC allows external systems to listen to those changes.</em><p>Whether it is MongoDB Change Streams, MySQL Binlogs, or PostgreSQL Logical Replication, the principle remains the same:</p>
+<p>An ordered stream of database changes that can be consumed reliably.</p>
+<p>Once you start viewing database updates as events rather than rows being modified, CDC becomes one of the most powerful tools for building scalable and loosely coupled systems.</p>
+
+</body>
+</html>
