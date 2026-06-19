@@ -9,7 +9,7 @@
      • Subtitle    : 
      • Slug        : listening-to-the-heartbeat-of-your-database-understanding-change-data-capture-cdc
      • Tags        : cdc, database, mysql, mongodb, postgresql, event-driven, data engineering, architecture
-     • Cover image : (no cover — upload manually)
+     • Cover image : https://calligra.dev/images/blog/listening-to-the-heartbeat-of-your-database-understanding-change-data-capture-cdc/cover.png
 
   3. Under "SEO" settings:
      • Canonical URL: https://calligra.dev/blog/listening-to-the-heartbeat-of-your-database-understanding-change-data-capture-cdc
