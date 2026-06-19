@@ -1,1264 +1,746 @@
-<html>
-
-<head>
-	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-	<title>Listening to the Heartbeat of Your Database: Understanding Change Data Capture (CDC)</title>
-	<style>
-		/* cspell:disable-file */
-		/* webkit printing magic: print all background colors */
-		html {
-			-webkit-print-color-adjust: exact;
-		}
-
-		* {
-			box-sizing: border-box;
-			-webkit-print-color-adjust: exact;
-		}
-
-		html,
-		body {
-			margin: 0;
-			padding: 0;
-		}
-
-		@media only screen {
-			body {
-				margin: 2em auto;
-				max-width: 900px;
-				color: rgb(55, 53, 47);
-			}
-		}
-
-		body {
-			line-height: 1.5;
-			white-space: pre-wrap;
-		}
-
-		a,
-		a.visited {
-			color: inherit;
-			text-decoration: underline;
-		}
-
-		.pdf-relative-link-path {
-			font-size: 80%;
-			color: #444;
-		}
-
-		h1,
-		h2,
-		h3 {
-			letter-spacing: -0.01em;
-			line-height: 1.2;
-			font-weight: 600;
-			margin-bottom: 0;
-		}
-
-		/* Override strong tags inside headings to maintain consistent weight */
-		h1 strong,
-		h2 strong,
-		h3 strong {
-			font-weight: 600;
-		}
-
-		.page-title {
-			font-size: 2.5rem;
-			font-weight: 700;
-			margin-top: 0;
-			margin-bottom: 0.75em;
-		}
-
-		h1 {
-			font-size: 1.875rem;
-			margin-top: 1.875rem;
-		}
-
-		h2 {
-			font-size: 1.5rem;
-			margin-top: 1.5rem;
-		}
-
-		h3 {
-			font-size: 1.25rem;
-			margin-top: 1.25rem;
-		}
-
-		.source {
-			border: 1px solid #ddd;
-			border-radius: 3px;
-			padding: 1.5em;
-			word-break: break-all;
-		}
-
-		.callout {
-			border-radius: 10px;
-			padding: 1rem;
-		}
-
-		figure {
-			margin: 1.25em 0;
-			page-break-inside: avoid;
-		}
-
-		figcaption {
-			opacity: 0.5;
-			font-size: 85%;
-			margin-top: 0.5em;
-		}
-
-		mark {
-			background-color: transparent;
-		}
-
-		.indented {
-			padding-left: 1.5em;
-		}
-
-		hr {
-			background: transparent;
-			display: block;
-			width: 100%;
-			height: 1px;
-			visibility: visible;
-			border: none;
-			border-bottom: 1px solid rgba(55, 53, 47, 0.09);
-		}
-
-		img {
-			max-width: 100%;
-		}
-
-		@media only print {
-			img {
-				max-height: 100vh;
-				object-fit: contain;
-			}
-
-			table.collection-content {
-				width: 100%;
-				table-layout: fixed;
-			}
-
-			table.collection-content th,
-			table.collection-content td {
-				overflow-wrap: anywhere;
-			}
-
-			table.collection-content td>.user,
-			table.collection-content td>time {
-				white-space: pre-wrap;
-			}
-		}
-
-		@page {
-			margin: 1in;
-		}
-
-		.collection-content-wrapper {
-			overflow-x: auto;
-		}
-
-		@media only print {
-			.collection-content-wrapper {
-				overflow-x: visible;
-			}
-		}
-
-		.collection-content {
-			font-size: 0.875rem;
-		}
-
-		.collection-content td {
-			white-space: pre-wrap;
-			word-break: break-word;
-		}
-
-		.column-list {
-			display: flex;
-			gap: 46px;
-		}
-
-		.column {
-			min-width: 0;
-			overflow: hidden;
-		}
-
-		.column>*:first-child {
-			margin-top: 0;
-		}
-
-		.table_of_contents-item {
-			display: block;
-			font-size: 0.875rem;
-			line-height: 1.3;
-			padding: 0.125rem;
-		}
-
-		.table_of_contents-indent-1 {
-			margin-left: 1.5rem;
-		}
-
-		.table_of_contents-indent-2 {
-			margin-left: 3rem;
-		}
-
-		.table_of_contents-indent-3 {
-			margin-left: 4.5rem;
-		}
-
-		.table_of_contents-link {
-			text-decoration: none;
-			opacity: 0.7;
-			border-bottom: 1px solid rgba(55, 53, 47, 0.18);
-		}
-
-		table,
-		th,
-		td {
-			border: 1px solid rgba(55, 53, 47, 0.09);
-		}
-
-		table {
-			border-collapse: collapse;
-			border-left: none;
-			border-right: none;
-		}
-
-		th,
-		td {
-			font-weight: normal;
-			padding: 0.25em 0.5em;
-			line-height: 1.5;
-			min-height: 1.5em;
-			text-align: left;
-		}
-
-		th {
-			color: rgba(55, 53, 47, 0.6);
-		}
-
-		ol,
-		ul {
-			margin: 0;
-			margin-block-start: 0.6em;
-			margin-block-end: 0.6em;
-		}
-
-		li>ol:first-child,
-		li>ul:first-child {
-			margin-block-start: 0.6em;
-		}
-
-		ul>li {
-			list-style: disc;
-		}
-
-		ul.to-do-list {
-			padding-inline-start: 0;
-		}
-
-		ul.to-do-list>li {
-			list-style: none;
-		}
-
-		.to-do-children-checked {
-			text-decoration: line-through;
-			opacity: 0.375;
-		}
-
-		ul.toggle>li {
-			list-style: none;
-		}
-
-		ul {
-			padding-inline-start: 1.7em;
-		}
-
-		ul>li {
-			padding-left: 0.1em;
-		}
-
-		ol {
-			padding-inline-start: 1.6em;
-		}
-
-		ol.numbered-list.numbered-list-digits-2 {
-			padding-inline-start: 2em;
-		}
-
-		ol.numbered-list.numbered-list-digits-3plus {
-			padding-inline-start: 2.4em;
-		}
-
-		ol>li {
-			padding-left: 0.2em;
-		}
-
-		.mono ol {
-			padding-inline-start: 2em;
-		}
-
-		.mono ol>li {
-			text-indent: -0.4em;
-		}
-
-		.toggle {
-			padding-inline-start: 0em;
-			list-style-type: none;
-		}
-
-		/* Indent toggle children */
-		.toggle>li>details {
-			padding-left: 1.7em;
-		}
-
-		.toggle>li>details>summary {
-			margin-left: -1.1em;
-		}
-
-		.selected-value {
-			display: inline-block;
-			padding: 0 0.5em;
-			background: rgba(206, 205, 202, 0.5);
-			border-radius: 3px;
-			margin-right: 0.5em;
-			margin-top: 0.3em;
-			margin-bottom: 0.3em;
-			white-space: nowrap;
-		}
-
-		.collection-title {
-			display: inline-block;
-			margin-right: 1em;
-		}
-
-		.page-description {
-			margin-bottom: 2em;
-		}
-
-		.simple-table {
-			margin-top: 1em;
-			font-size: 0.875rem;
-			empty-cells: show;
-		}
-
-		.simple-table td {
-			height: 29px;
-			min-width: 120px;
-		}
-
-		.simple-table th {
-			height: 29px;
-			min-width: 120px;
-		}
-
-		.simple-table-header-color {
-			background: rgb(247, 246, 243);
-			color: black;
-		}
-
-		.simple-table-header {
-			font-weight: 500;
-		}
-
-		time {
-			opacity: 0.5;
-		}
-
-		.icon {
-			display: inline-flex;
-			align-items: center;
-			justify-content: center;
-			max-width: 1.2em;
-			max-height: 1.2em;
-			text-decoration: none;
-			vertical-align: text-bottom;
-			margin-right: 0.5em;
-		}
-
-		img.icon {
-			border-radius: 3px;
-		}
-
-		.callout img.notion-static-icon {
-			width: 1em;
-			height: 1em;
-		}
-
-		.callout p {
-			margin: 0;
-		}
-
-		.callout h1,
-		.callout h2,
-		.callout h3 {
-			margin: 0 0 0.6rem;
-		}
-
-		.user-icon {
-			width: 1.5em;
-			height: 1.5em;
-			border-radius: 100%;
-			margin-right: 0.5rem;
-		}
-
-		.user-icon-inner {
-			font-size: 0.8em;
-		}
-
-		.text-icon {
-			border: 1px solid #000;
-			text-align: center;
-		}
-
-		.page-cover-image {
-			display: block;
-			object-fit: cover;
-			width: 100%;
-			max-height: 30vh;
-		}
-
-		.page-header-icon {
-			font-size: 3rem;
-			margin-bottom: 1rem;
-		}
-
-		.page-header-icon-with-cover {
-			margin-top: -0.72em;
-			margin-left: 0.07em;
-		}
-
-		.page-header-icon img {
-			border-radius: 3px;
-		}
-
-		.link-to-page {
-			margin: 1em 0;
-			padding: 0;
-			border: none;
-			font-weight: 500;
-		}
-
-		p>.user {
-			opacity: 0.5;
-		}
-
-		td>.user,
-		td>time {
-			white-space: nowrap;
-		}
-
-		input[type="checkbox"] {
-			transform: scale(1.5);
-			margin-right: 0.6em;
-			vertical-align: middle;
-		}
-
-		p {
-			margin-top: 0.5em;
-			margin-bottom: 0.5em;
-		}
-
-		.image {
-			border: none;
-			margin: 1.5em 0;
-			padding: 0;
-			border-radius: 0;
-			text-align: center;
-		}
-
-		.code,
-		code {
-			background: rgba(135, 131, 120, 0.15);
-			border-radius: 3px;
-			padding: 0.2em 0.4em;
-			border-radius: 3px;
-			font-size: 85%;
-			tab-size: 2;
-		}
-
-		code {
-			color: #eb5757;
-		}
-
-		.code {
-			padding: 1.5em 1em;
-		}
-
-		.code-wrap {
-			white-space: pre-wrap;
-			word-break: break-all;
-		}
-
-		.code>code {
-			background: none;
-			padding: 0;
-			font-size: 100%;
-			color: inherit;
-		}
-
-		blockquote {
-			font-size: 1em;
-			margin: 1em 0;
-			padding-left: 1em;
-			border-left: 3px solid rgb(55, 53, 47);
-		}
-
-		blockquote.quote-large {
-			font-size: 1.25em;
-		}
-
-		.bookmark {
-			text-decoration: none;
-			max-height: 8em;
-			padding: 0;
-			display: flex;
-			width: 100%;
-			align-items: stretch;
-		}
-
-		.bookmark-title {
-			font-size: 0.85em;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			height: 1.75em;
-			white-space: nowrap;
-		}
-
-		.bookmark-text {
-			display: flex;
-			flex-direction: column;
-		}
-
-		.bookmark-info {
-			flex: 4 1 180px;
-			padding: 12px 14px 14px;
-			display: flex;
-			flex-direction: column;
-			justify-content: space-between;
-		}
-
-		.bookmark-image {
-			width: 33%;
-			flex: 1 1 180px;
-			display: block;
-			position: relative;
-			object-fit: cover;
-			border-radius: 1px;
-		}
-
-		.bookmark-description {
-			color: rgba(55, 53, 47, 0.6);
-			font-size: 0.75em;
-			overflow: hidden;
-			max-height: 4.5em;
-			word-break: break-word;
-		}
-
-		.bookmark-href {
-			font-size: 0.75em;
-			margin-top: 0.25em;
-		}
-
-		.sans {
-			font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
-		}
-
-		.code {
-			font-family: "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace;
-		}
-
-		.serif {
-			font-family: Lyon-Text, Georgia, ui-serif, serif;
-		}
-
-		.mono {
-			font-family: iawriter-mono, Nitti, Menlo, Courier, monospace;
-		}
-
-		.pdf .sans {
-			font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK JP';
-		}
-
-		.pdf:lang(zh-CN) .sans {
-			font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK SC';
-		}
-
-		.pdf:lang(zh-TW) .sans {
-			font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK TC';
-		}
-
-		.pdf:lang(ko-KR) .sans {
-			font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK KR';
-		}
-
-		.pdf .code {
-			font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP';
-		}
-
-		.pdf:lang(zh-CN) .code {
-			font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC';
-		}
-
-		.pdf:lang(zh-TW) .code {
-			font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC';
-		}
-
-		.pdf:lang(ko-KR) .code {
-			font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR';
-		}
-
-		.pdf .serif {
-			font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK JP';
-		}
-
-		.pdf:lang(zh-CN) .serif {
-			font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK SC';
-		}
-
-		.pdf:lang(zh-TW) .serif {
-			font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK TC';
-		}
-
-		.pdf:lang(ko-KR) .serif {
-			font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK KR';
-		}
-
-		.pdf .mono {
-			font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP';
-		}
-
-		.pdf:lang(zh-CN) .mono {
-			font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC';
-		}
-
-		.pdf:lang(zh-TW) .mono {
-			font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC';
-		}
-
-		.pdf:lang(ko-KR) .mono {
-			font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR';
-		}
-
-		.highlight-default {
-			color: rgba(44, 44, 43, 1);
-		}
-
-		.highlight-gray {
-			color: rgba(125, 122, 117, 1);
-			fill: rgba(125, 122, 117, 1);
-		}
-
-		.highlight-brown {
-			color: rgba(159, 118, 90, 1);
-			fill: rgba(159, 118, 90, 1);
-		}
-
-		.highlight-orange {
-			color: rgba(210, 123, 45, 1);
-			fill: rgba(210, 123, 45, 1);
-		}
-
-		.highlight-yellow {
-			color: rgba(203, 148, 52, 1);
-			fill: rgba(203, 148, 52, 1);
-		}
-
-		.highlight-teal {
-			color: rgba(80, 148, 110, 1);
-			fill: rgba(80, 148, 110, 1);
-		}
-
-		.highlight-blue {
-			color: rgba(56, 125, 201, 1);
-			fill: rgba(56, 125, 201, 1);
-		}
-
-		.highlight-purple {
-			color: rgba(154, 107, 180, 1);
-			fill: rgba(154, 107, 180, 1);
-		}
-
-		.highlight-pink {
-			color: rgba(193, 76, 138, 1);
-			fill: rgba(193, 76, 138, 1);
-		}
-
-		.highlight-red {
-			color: rgba(207, 81, 72, 1);
-			fill: rgba(207, 81, 72, 1);
-		}
-
-		.highlight-default_background {
-			color: rgba(44, 44, 43, 1);
-		}
-
-		.highlight-gray_background {
-			background: rgba(42, 28, 0, 0.07);
-		}
-
-		.highlight-brown_background {
-			background: rgba(139, 46, 0, 0.086);
-		}
-
-		.highlight-orange_background {
-			background: rgba(224, 101, 1, 0.129);
-		}
-
-		.highlight-yellow_background {
-			background: rgba(211, 168, 0, 0.137);
-		}
-
-		.highlight-teal_background {
-			background: rgba(0, 100, 45, 0.09);
-		}
-
-		.highlight-blue_background {
-			background: rgba(0, 124, 215, 0.094);
-		}
-
-		.highlight-purple_background {
-			background: rgba(102, 0, 178, 0.078);
-		}
-
-		.highlight-pink_background {
-			background: rgba(197, 0, 93, 0.086);
-		}
-
-		.highlight-red_background {
-			background: rgba(223, 22, 0, 0.094);
-		}
-
-		.block-color-default {
-			color: inherit;
-			fill: inherit;
-		}
-
-		.block-color-gray {
-			color: rgba(125, 122, 117, 1);
-			fill: rgba(125, 122, 117, 1);
-		}
-
-		.block-color-brown {
-			color: rgba(159, 118, 90, 1);
-			fill: rgba(159, 118, 90, 1);
-		}
-
-		.block-color-orange {
-			color: rgba(210, 123, 45, 1);
-			fill: rgba(210, 123, 45, 1);
-		}
-
-		.block-color-yellow {
-			color: rgba(203, 148, 52, 1);
-			fill: rgba(203, 148, 52, 1);
-		}
-
-		.block-color-teal {
-			color: rgba(80, 148, 110, 1);
-			fill: rgba(80, 148, 110, 1);
-		}
-
-		.block-color-blue {
-			color: rgba(56, 125, 201, 1);
-			fill: rgba(56, 125, 201, 1);
-		}
-
-		.block-color-purple {
-			color: rgba(154, 107, 180, 1);
-			fill: rgba(154, 107, 180, 1);
-		}
-
-		.block-color-pink {
-			color: rgba(193, 76, 138, 1);
-			fill: rgba(193, 76, 138, 1);
-		}
-
-		.block-color-red {
-			color: rgba(207, 81, 72, 1);
-			fill: rgba(207, 81, 72, 1);
-		}
-
-		.block-color-default_background {
-			color: inherit;
-			fill: inherit;
-		}
-
-		.block-color-gray_background {
-			background: rgba(240, 239, 237, 1);
-		}
-
-		.block-color-brown_background {
-			background: rgba(245, 237, 233, 1);
-		}
-
-		.block-color-orange_background {
-			background: rgba(251, 235, 222, 1);
-		}
-
-		.block-color-yellow_background {
-			background: rgba(249, 243, 220, 1);
-		}
-
-		.block-color-teal_background {
-			background: rgba(232, 241, 236, 1);
-		}
-
-		.block-color-blue_background {
-			background: rgba(229, 242, 252, 1);
-		}
-
-		.block-color-purple_background {
-			background: rgba(243, 235, 249, 1);
-		}
-
-		.block-color-pink_background {
-			background: rgba(250, 233, 241, 1);
-		}
-
-		.block-color-red_background {
-			background: rgba(252, 233, 231, 1);
-		}
-
-		.select-value-color-default {
-			background-color: rgba(42, 28, 0, 0.07);
-		}
-
-		.select-value-color-gray {
-			background-color: rgba(28, 19, 1, 0.11);
-		}
-
-		.select-value-color-brown {
-			background-color: rgba(127, 51, 0, 0.156);
-		}
-
-		.select-value-color-orange {
-			background-color: rgba(196, 88, 0, 0.203);
-		}
-
-		.select-value-color-yellow {
-			background-color: rgba(209, 156, 0, 0.282);
-		}
-
-		.select-value-color-green {
-			background-color: rgba(0, 96, 38, 0.156);
-		}
-
-		.select-value-color-blue {
-			background-color: rgba(0, 118, 217, 0.203);
-		}
-
-		.select-value-color-purple {
-			background-color: rgba(92, 0, 163, 0.141);
-		}
-
-		.select-value-color-pink {
-			background-color: rgba(183, 0, 78, 0.152);
-		}
-
-		.select-value-color-red {
-			background-color: rgba(206, 24, 0, 0.164);
-		}
-
-		.checkbox {
-			display: inline-flex;
-			vertical-align: text-bottom;
-			width: 16;
-			height: 16;
-			background-size: 16px;
-			margin-left: 2px;
-			margin-right: 5px;
-		}
-
-		.checkbox-on {
-			background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22%2358A9D7%22%2F%3E%0A%3Cpath%20d%3D%22M6.71429%2012.2852L14%204.9995L12.7143%203.71436L6.71429%209.71378L3.28571%206.2831L2%207.57092L6.71429%2012.2852Z%22%20fill%3D%22white%22%2F%3E%0A%3C%2Fsvg%3E");
-		}
-
-		.checkbox-off {
-			background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20x%3D%220.75%22%20y%3D%220.75%22%20width%3D%2214.5%22%20height%3D%2214.5%22%20fill%3D%22white%22%20stroke%3D%22%2336352F%22%20stroke-width%3D%221.5%22%2F%3E%0A%3C%2Fsvg%3E");
-		}
-	</style>
-</head>
-
-<body>
-	<article id="3746d16f-7385-8001-9e10-ff1a67632828" class="page sans">
-		<header>
-			<div class="page-header-icon undefined"><img class="icon notion-static-icon"
-					src="https://app.notion.com/icons/document_red.svg" /></div>
-			<h1 class="page-title" dir="auto">Listening to the Heartbeat of Your Database: Understanding Change Data
-				Capture (CDC)</h1>
-			<p class="page-description" dir="auto"></p>
-				<tbody>
-					<tr class="property-row property-row-created_by">
-						<th><span class="icon property-icon"><img
-									src="https://app.notion.com/icons/user-circle_gray.svg"
-									style="width:14px;height:14px;display:block" /></span>Created by</th>
-						<td><span class="user"><img
-									src="https://lh3.googleusercontent.com/a/ACg8ocIovZyeY_p2I5J56yzeUvP8mXK3HDaglubYoo34t8l4HXazMvD8=s100"
-									class="icon user-icon" />Ali Ghalambaz</span></td>
-					</tr>
-					<tr class="property-row property-row-created_time">
-						<th><span class="icon property-icon"><img src="https://app.notion.com/icons/clock_gray.svg"
-									style="width:14px;height:14px;display:block" /></span>Created time</th>
-						<td><time>June 3, 2026 9:55 PM</time></td>
-					</tr>
-					<tr class="property-row property-row-multi_select">
-						<th><span class="icon property-icon"><img src="https://app.notion.com/icons/list_gray.svg"
-									style="width:14px;height:14px;display:block" /></span>Category</th>
-						<td><span class="selected-value select-value-color-purple">Databases</span></td>
-					</tr>
-					<tr class="property-row property-row-last_edited_by">
-						<th><span class="icon property-icon"><img
-									src="https://app.notion.com/icons/user-circle_gray.svg"
-									style="width:14px;height:14px;display:block" /></span>Last edited by</th>
-						<td><span class="user"><img
-									src="https://lh3.googleusercontent.com/a/ACg8ocIovZyeY_p2I5J56yzeUvP8mXK3HDaglubYoo34t8l4HXazMvD8=s100"
-									class="icon user-icon" />Ali Ghalambaz</span></td>
-					</tr>
-					<tr class="property-row property-row-last_edited_time">
-						<th><span class="icon property-icon"><img src="https://app.notion.com/icons/clock_gray.svg"
-									style="width:14px;height:14px;display:block" /></span>Last updated time</th>
-						<td><time>June 17, 2026 11:24 PM</time></td>
-					</tr>
-					<tr class="property-row property-row-number">
-						<th><span class="icon property-icon"><img src="https://app.notion.com/icons/hashtag_gray.svg"
-									style="width:14px;height:14px;display:block" /></span></th>
-						<td>2</td>
-					</tr>
-					<tr class="property-row property-row-select">
-						<th><span class="icon property-icon"><img
-									src="https://app.notion.com/icons/arrow-circle-down_gray.svg"
-									style="width:14px;height:14px;display:block" /></span>Level</th>
-						<td><span class="selected-value select-value-color-green">Intermediate</span></td>
-					</tr>
-					<tr class="property-row property-row-status">
-						<th><span class="icon property-icon"><img src="https://app.notion.com/icons/burst_gray.svg"
-									style="width:14px;height:14px;display:block" /></span>Status</th>
-						<td><span class="status-value select-value-color-yellow">
-								<div class="status-dot status-dot-color-yellow"></div>Editing
-							</span></td>
-					</tr>
-					<tr class="property-row property-row-multi_select">
-						<th><span class="icon property-icon"><img src="https://app.notion.com/icons/list_gray.svg"
-									style="width:14px;height:14px;display:block" /></span>Tags</th>
-						<td><span class="selected-value select-value-color-gray">architecture</span><span
-								class="selected-value select-value-color-orange">cdc</span><span
-								class="selected-value select-value-color-blue">data engineering</span><span
-								class="selected-value select-value-color-blue">database</span><span
-								class="selected-value select-value-color-red">event-driven</span><span
-								class="selected-value select-value-color-default">mongodb</span><span
-								class="selected-value select-value-color-green">mysql</span><span
-								class="selected-value select-value-color-pink">postgresql</span></td>
-					</tr>
-					<tr class="property-row property-row-number">
-						<th><span class="icon property-icon"><img src="https://app.notion.com/icons/hashtag_gray.svg"
-									style="width:14px;height:14px;display:block" /></span>Time to Read</th>
-						<td>8</td>
-					</tr>
-					<tr class="property-row property-row-select">
-						<th><span class="icon property-icon"><img
-									src="https://app.notion.com/icons/arrow-circle-down_gray.svg"
-									style="width:14px;height:14px;display:block" /></span>Type</th>
-						<td><span class="selected-value select-value-color-purple">Explainer</span></td>
-					</tr>
-					<tr class="property-row property-row-text">
-						<th><span class="icon property-icon"><img
-									src="https://app.notion.com/icons/description_gray.svg"
-									style="width:14px;height:14px;display:block" /></span>slug</th>
-						<td>listening-to-the-heartbeat-of-your-database-understanding-change-data-capture-cdc</td>
-					</tr>
-				</tbody>
-			</table>
-		</header>
-		<div class="page-body">
-			<div style="display:contents" dir="auto">
-				<h1 id="3786d16f-7385-80eb-8eb6-c32b3e576503" class=""></h1>
-			</div>
-			<div style="display:contents" dir="auto">
-				<blockquote id="3786d16f-7385-8081-b5df-c3dcfd1baaf3" class="">CDC stands for <strong>Change Data
-						Capture</strong>.</blockquote>
-			</div>
-			<div style="display:contents" dir="auto">
-				<h2 id="3786d16f-7385-8085-8880-e5d5f891db38" class="">What You Will Learn</h2>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-80e0-b454-e32ceafda08f" class="bulleted-list">
-					<li style="list-style-type:disc">What CDC is</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-8004-b028-f35be3ff6c85" class="bulleted-list">
-					<li style="list-style-type:disc">The story behind it</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-8026-8345-e455bfc0b23b" class="bulleted-list">
-					<li style="list-style-type:disc">How it works internally</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-80f2-9ef6-c08461c79707" class="bulleted-list">
-					<li style="list-style-type:disc">Common use cases</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-80b7-a5d9-e9d12de2caf4" class="bulleted-list">
-					<li style="list-style-type:disc">A simplified implementation example</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80c2-8417-f85cb8e2fd94" class=""><strong>Estimated reading time:</strong> 10–15
-					minutes</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<hr id="3786d16f-7385-806a-8962-e46aec971dab" />
-			</div>
-			<div style="display:contents" dir="auto">
-				<h1 id="3786d16f-7385-803f-9330-d22e459ba229" class="">What Is CDC?</h1>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-8046-8587-e6cbc76e5163" class="">Change Data Capture (CDC) is a technique for
-					capturing changes made to data and exposing those changes to external systems.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80db-84e1-c207373fa519" class="">Instead of repeatedly querying a database to check
-					whether something has changed, CDC allows applications to consume a stream of inserts, updates, and
-					deletes as they happen.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-803a-9a14-eb7c9416d383" class="">Think of CDC as a way to listen to the heartbeat
-					of your database.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80c5-8912-cd4ffb89f6c3" class="">Every time data changes, the database records that
-					change internally. CDC makes those changes available so that other systems can react to them in real
-					time.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<hr id="3786d16f-7385-8046-acbe-ce7bb17f3ec7" />
-			</div>
-			<div style="display:contents" dir="auto">
-				<h1 id="3786d16f-7385-8077-8d02-de86dd5162dd" class="">The Story Behind CDC</h1>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-800b-b85f-d2a87c1aff23" class="">To understand CDC, it helps to understand how
-					databases have worked for decades.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-804a-89d2-edaa4c8b261a" class="">Whenever data changes, databases do not simply
-					overwrite the old value and move on. They maintain an internal record of operations that have
-					occurred.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-803f-85f8-f904b0ab5234" class="">These records are commonly stored in transaction
-					logs.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80e0-9f2f-cfbf5844edcb" class="">Historically, every database implemented these
-					logs differently, but the purpose was always the same:</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-808e-84c5-c694768c4301" class="bulleted-list">
-					<li style="list-style-type:disc">Record every change made to the database</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-8026-8477-e8f026b8e7e7" class="bulleted-list">
-					<li style="list-style-type:disc">Recover from failures</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-8024-9f18-f91e7628f345" class="bulleted-list">
-					<li style="list-style-type:disc">Replicate data to other nodes</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-800a-923b-e84bf1602437" class="bulleted-list">
-					<li style="list-style-type:disc">Maintain consistency</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-8050-baa5-fcdd7a2d2c16" class="">Every insert, update, and delete operation
-					generates a log entry.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80a6-9e20-eceda45417cf" class="">These entries are ordered and identified by a
-					unique position or token.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-805a-9444-ee7a6095c0b8" class="">The ordering is critical.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80a1-9eeb-e9ca543df662" class="">Imagine the following sequence:</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ol type="1" id="3786d16f-7385-80d4-b805-c27b35c9d357" class="numbered-list" start="1">
-					<li>Create User</li>
-				</ol>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ol type="1" id="3786d16f-7385-8083-b1bf-d0fd800df5fe" class="numbered-list" start="2">
-					<li>Update User</li>
-				</ol>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ol type="1" id="3786d16f-7385-800a-a3f1-ebfca62813a9" class="numbered-list" start="3">
-					<li>Delete User</li>
-				</ol>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-8074-989a-f0dc63ebe355" class="">If a replica applied these operations in a
-					different order, it would end up with completely different data.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-8072-a164-d7a13ea94f5b" class="">Because these logs are ordered, databases can
-					reliably replay changes and reconstruct state over time.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80f9-a2ad-e341ffbef004" class="">This is how replication works in many database
-					systems.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-801f-8083-da59cdff9fac" class="">A replica typically starts with an initial
-					snapshot and then continuously applies new changes by replaying the transaction log.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<hr id="3786d16f-7385-8095-9423-dc13a4b460b1" />
-			</div>
-			<div style="display:contents" dir="auto">
-				<h1 id="3786d16f-7385-80ff-a977-ed112ba60a67" class="">Where CDC Comes In</h1>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-8013-aaad-c04a078d5717" class="">Originally, these logs were intended for the
-					database itself.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-801a-a2be-c827320b76fa" class="">CDC extends that idea by allowing external
-					applications to consume those same changes.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-8079-8fb4-e068b7bccf45" class="">Instead of only replicas reading database changes,
-					your applications can read them too.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80bd-b477-eeadd106fef3" class="">This means that whenever data changes, you can
-					react immediately without constantly querying the database.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80a6-b4cd-de31e714ca33" class="">The underlying idea is simple:</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<blockquote id="3786d16f-7385-80e2-98e6-e3e423ad9ea5" class="">Expose an ordered stream of database
-					changes that external systems can consume reliably.</blockquote>
-			</div>
-			<div style="display:contents" dir="auto">
-				<hr id="3786d16f-7385-80b9-bb2f-e6062d34af52" />
-			</div>
-			<div style="display:contents" dir="auto">
-				<h1 id="3786d16f-7385-801f-9541-f39380985fa8" class="">How CDC Works</h1>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80e4-978a-e2288b3a8522" class="">Different databases implement CDC differently, but
-					the concept remains the same.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<h3 id="3786d16f-7385-80d6-afdf-da030011c337" class="">MongoDB</h3>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-8022-98af-e9e5476354ff" class="">MongoDB provides CDC through <strong>Change
-						Streams</strong>.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-8088-b4e2-e45a673c86e7" class="">Each event contains a <strong>resume
-						token</strong>, which allows consumers to continue reading from the last processed change after
-					a restart or failure.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<h3 id="3786d16f-7385-80ad-ba37-c6a5ad45b210" class="">MySQL</h3>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80ea-9470-fc744e85037e" class="">MySQL exposes changes through its <strong>Binary
-						Log (Binlog)</strong>.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-801c-b8df-ea170f58f188" class="">CDC tools can read the binlog and transform
-					database operations into events.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<h3 id="3786d16f-7385-8061-9e2d-c4aa8e3b86f2" class="">PostgreSQL</h3>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80d5-89bb-e9a0d1d63cb0" class="">PostgreSQL provides CDC through <strong>Logical
-						Decoding</strong> and <strong>Logical Replication</strong>.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80b7-9e5e-eadfd8465e03" class="">These mechanisms allow applications to consume
-					database changes in order.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80f8-9f42-f9f00c62c48b" class="">Although the implementations differ, they all
-					provide the same capability:</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<blockquote id="3786d16f-7385-8067-972f-e3e2f03cfac0" class="">An ordered stream of database changes.
-				</blockquote>
-			</div>
-			<div style="display:contents" dir="auto">
-				<hr id="3786d16f-7385-80df-bed8-f744828c4fd6" />
-			</div>
-			<div style="display:contents" dir="auto">
-				<h1 id="3786d16f-7385-8065-96ea-de3a5b9656b0" class="">CDC Is Usually Pull-Based</h1>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-809f-a37f-eb9e49afe489" class="">One common misconception is that databases push
-					changes directly to your application.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80ba-b3b9-e181f9aa53bb" class="">In reality, most CDC implementations are
-					fundamentally pull-based.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80e8-a892-ede81e532cc9" class="">The consumer requests the next available change
-					from the database.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80ce-8698-e36f3961afde" class="">However, applications typically maintain a
-					long-lived connection or cursor, making the experience feel very similar to receiving pushed events.
-				</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-8023-9cbd-ef6bdccc95c0" class="">For example, MongoDB&#x27;s <code>watch()</code>
-					API keeps a stream open and continuously delivers new events as they become available.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-805c-a7ce-c89fb8d9ec09" class="">From the application&#x27;s perspective, it feels
-					real-time.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<hr id="3786d16f-7385-802a-b36e-ff8f4b12c090" />
-			</div>
-			<div style="display:contents" dir="auto">
-				<h1 id="3786d16f-7385-8046-9cca-f74c9019d223" class="">A Simplified CDC Example</h1>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-8040-a4ce-db3e6b8f15c4" class="">To understand the concept, imagine that every
-					database change is converted into a standardized event.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"
-					integrity="sha512-7Z9J3l1+EYfeaPKcGXu3MS/7T+w19WtKQY/n+xzmw4hZhJ9tyYmcUS+4QqAlzhicE5LAfMQSF3iFTK9bQdTxXg=="
-					crossorigin="anonymous" referrerPolicy="no-referrer"></script>
-				<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css"
-					integrity="sha512-tN7Ec6zAFaVSG3TpNAKtk4DOHNpSwKHxxrsiw4GHKESGPs5njn/0sMCUMl2svV4wo4BK/rCP7juYz+zx+l6oeQ=="
-					crossorigin="anonymous" referrerPolicy="no-referrer" />
-				<script
-					src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup-templating.min.js"
-					integrity="sha512-+8BiRfWso6waiFDv6tEmWF8yfPGgxAtOYLDUB0rRISLwtpxkJ9lpPNUhxwWlikn3qSO+4RQyzDppi62o3ON/AA=="
-					crossorigin="anonymous" referrerPolicy="no-referrer"></script>
-				<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"
-					integrity="sha512-plzrTi61ltEMFf84gTVO9IkvIMfBu07bnDuahvdlIclmFWzXJ9VcRsny9d45sxFZRv3jJg/MHNyuxnUYEMxMEg=="
-					crossorigin="anonymous" referrerPolicy="no-referrer"></script>
-				<pre id="3786d16f-7385-8050-a109-f3400d7ac35a" class="code code-wrap"><code class="language-php" style="white-space:pre-wrap;word-break:break-all">function captureDataChange($operation, $table, $id, $before, $after)
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><title>Listening to the Heartbeat of Your Database: Understanding Change Data Capture (CDC)</title><style>
+/* cspell:disable-file */
+/* webkit printing magic: print all background colors */
+html {
+	-webkit-print-color-adjust: exact;
+}
+* {
+	box-sizing: border-box;
+	-webkit-print-color-adjust: exact;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+}
+@media only screen {
+	body {
+		margin: 2em auto;
+		max-width: 900px;
+		color: rgb(55, 53, 47);
+	}
+}
+
+body {
+	line-height: 1.5;
+	white-space: pre-wrap;
+}
+
+a,
+a.visited {
+	color: inherit;
+	text-decoration: underline;
+}
+
+.pdf-relative-link-path {
+	font-size: 80%;
+	color: #444;
+}
+
+h1,
+h2,
+h3 {
+	letter-spacing: -0.01em;
+	line-height: 1.2;
+	font-weight: 600;
+	margin-bottom: 0;
+}
+
+/* Override strong tags inside headings to maintain consistent weight */
+h1 strong,
+h2 strong,
+h3 strong {
+	font-weight: 600;
+}
+
+.page-title {
+	font-size: 2.5rem;
+	font-weight: 700;
+	margin-top: 0;
+	margin-bottom: 0.75em;
+}
+
+h1 {
+	font-size: 1.875rem;
+	margin-top: 1.875rem;
+}
+
+h2 {
+	font-size: 1.5rem;
+	margin-top: 1.5rem;
+}
+
+h3 {
+	font-size: 1.25rem;
+	margin-top: 1.25rem;
+}
+
+.source {
+	border: 1px solid #ddd;
+	border-radius: 3px;
+	padding: 1.5em;
+	word-break: break-all;
+}
+
+.callout {
+	border-radius: 10px;
+	padding: 1rem;
+}
+
+figure {
+	margin: 1.25em 0;
+	page-break-inside: avoid;
+}
+
+figcaption {
+	opacity: 0.5;
+	font-size: 85%;
+	margin-top: 0.5em;
+}
+
+mark {
+	background-color: transparent;
+}
+
+.indented {
+	padding-left: 1.5em;
+}
+
+hr {
+	background: transparent;
+	display: block;
+	width: 100%;
+	height: 1px;
+	visibility: visible;
+	border: none;
+	border-bottom: 1px solid rgba(55, 53, 47, 0.09);
+}
+
+img {
+	max-width: 100%;
+}
+
+@media only print {
+	img {
+		max-height: 100vh;
+		object-fit: contain;
+	}
+
+	table.collection-content {
+		width: 100%;
+		table-layout: fixed;
+	}
+
+	table.collection-content th,
+	table.collection-content td {
+		overflow-wrap: anywhere;
+	}
+
+	table.collection-content td > .user,
+	table.collection-content td > time {
+		white-space: pre-wrap;
+	}
+}
+
+@page {
+	margin: 1in;
+}
+
+.collection-content-wrapper {
+	overflow-x: auto;
+}
+
+@media only print {
+	.collection-content-wrapper {
+		overflow-x: visible;
+	}
+}
+
+.collection-content {
+	font-size: 0.875rem;
+}
+
+.collection-content td {
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.column-list {
+	display: flex;
+	gap: 46px;
+}
+
+.column {
+	min-width: 0;
+	overflow: hidden;
+}
+
+.column > *:first-child {
+	margin-top: 0;
+}
+
+.table_of_contents-item {
+	display: block;
+	font-size: 0.875rem;
+	line-height: 1.3;
+	padding: 0.125rem;
+}
+
+.table_of_contents-indent-1 {
+	margin-left: 1.5rem;
+}
+
+.table_of_contents-indent-2 {
+	margin-left: 3rem;
+}
+
+.table_of_contents-indent-3 {
+	margin-left: 4.5rem;
+}
+
+.table_of_contents-link {
+	text-decoration: none;
+	opacity: 0.7;
+	border-bottom: 1px solid rgba(55, 53, 47, 0.18);
+}
+
+table,
+th,
+td {
+	border: 1px solid rgba(55, 53, 47, 0.09);
+}
+
+table {
+	border-collapse: collapse;
+	border-left: none;
+	border-right: none;
+}
+
+th,
+td {
+	font-weight: normal;
+	padding: 0.25em 0.5em;
+	line-height: 1.5;
+	min-height: 1.5em;
+	text-align: left;
+}
+
+th {
+	color: rgba(55, 53, 47, 0.6);
+}
+
+ol,
+ul {
+	margin: 0;
+	margin-block-start: 0.6em;
+	margin-block-end: 0.6em;
+}
+
+li > ol:first-child,
+li > ul:first-child {
+	margin-block-start: 0.6em;
+}
+
+ul > li {
+	list-style: disc;
+}
+
+ul.to-do-list {
+	padding-inline-start: 0;
+}
+
+ul.to-do-list > li {
+	list-style: none;
+}
+
+.to-do-children-checked {
+	text-decoration: line-through;
+	opacity: 0.375;
+}
+
+ul.toggle > li {
+	list-style: none;
+}
+
+ul {
+	padding-inline-start: 1.7em;
+}
+
+ul > li {
+	padding-left: 0.1em;
+}
+
+ol {
+	padding-inline-start: 1.6em;
+}
+
+ol.numbered-list.numbered-list-digits-2 {
+	padding-inline-start: 2em;
+}
+
+ol.numbered-list.numbered-list-digits-3plus {
+	padding-inline-start: 2.4em;
+}
+
+ol > li {
+	padding-left: 0.2em;
+}
+
+.mono ol {
+	padding-inline-start: 2em;
+}
+
+.mono ol > li {
+	text-indent: -0.4em;
+}
+
+.toggle {
+	padding-inline-start: 0em;
+	list-style-type: none;
+}
+
+/* Indent toggle children */
+.toggle > li > details {
+	padding-left: 1.7em;
+}
+
+.toggle > li > details > summary {
+	margin-left: -1.1em;
+}
+
+.selected-value {
+	display: inline-block;
+	padding: 0 0.5em;
+	background: rgba(206, 205, 202, 0.5);
+	border-radius: 3px;
+	margin-right: 0.5em;
+	margin-top: 0.3em;
+	margin-bottom: 0.3em;
+	white-space: nowrap;
+}
+
+.collection-title {
+	display: inline-block;
+	margin-right: 1em;
+}
+
+.page-description {
+	margin-bottom: 2em;
+}
+
+.simple-table {
+	margin-top: 1em;
+	font-size: 0.875rem;
+	empty-cells: show;
+}
+.simple-table td {
+	height: 29px;
+	min-width: 120px;
+}
+
+.simple-table th {
+	height: 29px;
+	min-width: 120px;
+}
+
+.simple-table-header-color {
+	background: rgb(247, 246, 243);
+	color: black;
+}
+.simple-table-header {
+	font-weight: 500;
+}
+
+time {
+	opacity: 0.5;
+}
+
+.icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	max-width: 1.2em;
+	max-height: 1.2em;
+	text-decoration: none;
+	vertical-align: text-bottom;
+	margin-right: 0.5em;
+}
+
+img.icon {
+	border-radius: 3px;
+}
+
+.callout img.notion-static-icon {
+	width: 1em;
+	height: 1em;
+}
+
+.callout p {
+	margin: 0;
+}
+
+.callout h1,
+.callout h2,
+.callout h3 {
+	margin: 0 0 0.6rem;
+}
+
+.user-icon {
+	width: 1.5em;
+	height: 1.5em;
+	border-radius: 100%;
+	margin-right: 0.5rem;
+}
+
+.user-icon-inner {
+	font-size: 0.8em;
+}
+
+.text-icon {
+	border: 1px solid #000;
+	text-align: center;
+}
+
+.page-cover-image {
+	display: block;
+	object-fit: cover;
+	width: 100%;
+	max-height: 30vh;
+}
+
+.page-header-icon {
+	font-size: 3rem;
+	margin-bottom: 1rem;
+}
+
+.page-header-icon-with-cover {
+	margin-top: -0.72em;
+	margin-left: 0.07em;
+}
+
+.page-header-icon img {
+	border-radius: 3px;
+}
+
+.link-to-page {
+	margin: 1em 0;
+	padding: 0;
+	border: none;
+	font-weight: 500;
+}
+
+p > .user {
+	opacity: 0.5;
+}
+
+td > .user,
+td > time {
+	white-space: nowrap;
+}
+
+input[type="checkbox"] {
+	transform: scale(1.5);
+	margin-right: 0.6em;
+	vertical-align: middle;
+}
+
+p {
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
+}
+
+.image {
+	border: none;
+	margin: 1.5em 0;
+	padding: 0;
+	border-radius: 0;
+	text-align: center;
+}
+
+.code,
+code {
+	background: rgba(135, 131, 120, 0.15);
+	border-radius: 3px;
+	padding: 0.2em 0.4em;
+	border-radius: 3px;
+	font-size: 85%;
+	tab-size: 2;
+}
+
+code {
+	color: #eb5757;
+}
+
+.code {
+	padding: 1.5em 1em;
+}
+
+.code-wrap {
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.code > code {
+	background: none;
+	padding: 0;
+	font-size: 100%;
+	color: inherit;
+}
+
+blockquote {
+	font-size: 1em;
+	margin: 1em 0;
+	padding-left: 1em;
+	border-left: 3px solid rgb(55, 53, 47);
+}
+
+blockquote.quote-large {
+	font-size: 1.25em;
+}
+
+.bookmark {
+	text-decoration: none;
+	max-height: 8em;
+	padding: 0;
+	display: flex;
+	width: 100%;
+	align-items: stretch;
+}
+
+.bookmark-title {
+	font-size: 0.85em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	height: 1.75em;
+	white-space: nowrap;
+}
+
+.bookmark-text {
+	display: flex;
+	flex-direction: column;
+}
+
+.bookmark-info {
+	flex: 4 1 180px;
+	padding: 12px 14px 14px;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+}
+
+.bookmark-image {
+	width: 33%;
+	flex: 1 1 180px;
+	display: block;
+	position: relative;
+	object-fit: cover;
+	border-radius: 1px;
+}
+
+.bookmark-description {
+	color: rgba(55, 53, 47, 0.6);
+	font-size: 0.75em;
+	overflow: hidden;
+	max-height: 4.5em;
+	word-break: break-word;
+}
+
+.bookmark-href {
+	font-size: 0.75em;
+	margin-top: 0.25em;
+}
+
+.sans { font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol"; }
+.code { font-family: "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace; }
+.serif { font-family: Lyon-Text, Georgia, ui-serif, serif; }
+.mono { font-family: iawriter-mono, Nitti, Menlo, Courier, monospace; }
+.pdf .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK JP'; }
+.pdf:lang(zh-CN) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK SC'; }
+.pdf:lang(zh-TW) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK TC'; }
+.pdf:lang(ko-KR) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK KR'; }
+.pdf .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP'; }
+.pdf:lang(zh-CN) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC'; }
+.pdf:lang(zh-TW) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC'; }
+.pdf:lang(ko-KR) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR'; }
+.pdf .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK JP'; }
+.pdf:lang(zh-CN) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK SC'; }
+.pdf:lang(zh-TW) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK TC'; }
+.pdf:lang(ko-KR) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK KR'; }
+.pdf .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP'; }
+.pdf:lang(zh-CN) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC'; }
+.pdf:lang(zh-TW) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC'; }
+.pdf:lang(ko-KR) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR'; }
+.highlight-default {
+	color: rgba(44, 44, 43, 1);
+}
+.highlight-gray {
+	color: rgba(125, 122, 117, 1);
+	fill: rgba(125, 122, 117, 1);
+}
+.highlight-brown {
+	color: rgba(159, 118, 90, 1);
+	fill: rgba(159, 118, 90, 1);
+}
+.highlight-orange {
+	color: rgba(210, 123, 45, 1);
+	fill: rgba(210, 123, 45, 1);
+}
+.highlight-yellow {
+	color: rgba(203, 148, 52, 1);
+	fill: rgba(203, 148, 52, 1);
+}
+.highlight-teal {
+	color: rgba(80, 148, 110, 1);
+	fill: rgba(80, 148, 110, 1);
+}
+.highlight-blue {
+	color: rgba(56, 125, 201, 1);
+	fill: rgba(56, 125, 201, 1);
+}
+.highlight-purple {
+	color: rgba(154, 107, 180, 1);
+	fill: rgba(154, 107, 180, 1);
+}
+.highlight-pink {
+	color: rgba(193, 76, 138, 1);
+	fill: rgba(193, 76, 138, 1);
+}
+.highlight-red {
+	color: rgba(207, 81, 72, 1);
+	fill: rgba(207, 81, 72, 1);
+}
+.highlight-default_background {
+	color: rgba(44, 44, 43, 1);
+}
+.highlight-gray_background {
+	background: rgba(42, 28, 0, 0.07);
+}
+.highlight-brown_background {
+	background: rgba(139, 46, 0, 0.086);
+}
+.highlight-orange_background {
+	background: rgba(224, 101, 1, 0.129);
+}
+.highlight-yellow_background {
+	background: rgba(211, 168, 0, 0.137);
+}
+.highlight-teal_background {
+	background: rgba(0, 100, 45, 0.09);
+}
+.highlight-blue_background {
+	background: rgba(0, 124, 215, 0.094);
+}
+.highlight-purple_background {
+	background: rgba(102, 0, 178, 0.078);
+}
+.highlight-pink_background {
+	background: rgba(197, 0, 93, 0.086);
+}
+.highlight-red_background {
+	background: rgba(223, 22, 0, 0.094);
+}
+.block-color-default {
+	color: inherit;
+	fill: inherit;
+}
+.block-color-gray {
+	color: rgba(125, 122, 117, 1);
+	fill: rgba(125, 122, 117, 1);
+}
+.block-color-brown {
+	color: rgba(159, 118, 90, 1);
+	fill: rgba(159, 118, 90, 1);
+}
+.block-color-orange {
+	color: rgba(210, 123, 45, 1);
+	fill: rgba(210, 123, 45, 1);
+}
+.block-color-yellow {
+	color: rgba(203, 148, 52, 1);
+	fill: rgba(203, 148, 52, 1);
+}
+.block-color-teal {
+	color: rgba(80, 148, 110, 1);
+	fill: rgba(80, 148, 110, 1);
+}
+.block-color-blue {
+	color: rgba(56, 125, 201, 1);
+	fill: rgba(56, 125, 201, 1);
+}
+.block-color-purple {
+	color: rgba(154, 107, 180, 1);
+	fill: rgba(154, 107, 180, 1);
+}
+.block-color-pink {
+	color: rgba(193, 76, 138, 1);
+	fill: rgba(193, 76, 138, 1);
+}
+.block-color-red {
+	color: rgba(207, 81, 72, 1);
+	fill: rgba(207, 81, 72, 1);
+}
+.block-color-default_background {
+	color: inherit;
+	fill: inherit;
+}
+.block-color-gray_background {
+	background: rgba(240, 239, 237, 1);
+}
+.block-color-brown_background {
+	background: rgba(245, 237, 233, 1);
+}
+.block-color-orange_background {
+	background: rgba(251, 235, 222, 1);
+}
+.block-color-yellow_background {
+	background: rgba(249, 243, 220, 1);
+}
+.block-color-teal_background {
+	background: rgba(232, 241, 236, 1);
+}
+.block-color-blue_background {
+	background: rgba(229, 242, 252, 1);
+}
+.block-color-purple_background {
+	background: rgba(243, 235, 249, 1);
+}
+.block-color-pink_background {
+	background: rgba(250, 233, 241, 1);
+}
+.block-color-red_background {
+	background: rgba(252, 233, 231, 1);
+}
+.select-value-color-default { background-color: rgba(42, 28, 0, 0.07); }
+.select-value-color-gray { background-color: rgba(28, 19, 1, 0.11); }
+.select-value-color-brown { background-color: rgba(127, 51, 0, 0.156); }
+.select-value-color-orange { background-color: rgba(196, 88, 0, 0.203); }
+.select-value-color-yellow { background-color: rgba(209, 156, 0, 0.282); }
+.select-value-color-green { background-color: rgba(0, 96, 38, 0.156); }
+.select-value-color-blue { background-color: rgba(0, 118, 217, 0.203); }
+.select-value-color-purple { background-color: rgba(92, 0, 163, 0.141); }
+.select-value-color-pink { background-color: rgba(183, 0, 78, 0.152); }
+.select-value-color-red { background-color: rgba(206, 24, 0, 0.164); }
+
+.checkbox {
+	display: inline-flex;
+	vertical-align: text-bottom;
+	width: 16;
+	height: 16;
+	background-size: 16px;
+	margin-left: 2px;
+	margin-right: 5px;
+}
+
+.checkbox-on {
+	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22%2358A9D7%22%2F%3E%0A%3Cpath%20d%3D%22M6.71429%2012.2852L14%204.9995L12.7143%203.71436L6.71429%209.71378L3.28571%206.2831L2%207.57092L6.71429%2012.2852Z%22%20fill%3D%22white%22%2F%3E%0A%3C%2Fsvg%3E");
+}
+
+.checkbox-off {
+	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20x%3D%220.75%22%20y%3D%220.75%22%20width%3D%2214.5%22%20height%3D%2214.5%22%20fill%3D%22white%22%20stroke%3D%22%2336352F%22%20stroke-width%3D%221.5%22%2F%3E%0A%3C%2Fsvg%3E");
+}
+	
+</style></head><body><article id="3746d16f-7385-8001-9e10-ff1a67632828" class="page sans"><header><div class="page-header-icon undefined"><img class="icon notion-static-icon" src="https://app.notion.com/icons/document_red.svg"/></div><h1 class="page-title" dir="auto">Listening to the Heartbeat of Your Database: Understanding Change Data Capture (CDC)</h1><p class="page-description" dir="auto"></p><table class="properties"><tbody><tr class="property-row property-row-created_by"><th><span class="icon property-icon"><img src="https://app.notion.com/icons/user-circle_gray.svg" style="width:14px;height:14px;display:block"/></span>Created by</th><td><span class="user"><img src="https://lh3.googleusercontent.com/a/ACg8ocIovZyeY_p2I5J56yzeUvP8mXK3HDaglubYoo34t8l4HXazMvD8=s100" class="icon user-icon"/>Ali Ghalambaz</span></td></tr><tr class="property-row property-row-created_time"><th><span class="icon property-icon"><img src="https://app.notion.com/icons/clock_gray.svg" style="width:14px;height:14px;display:block"/></span>Created time</th><td><time>June 3, 2026 9:55 PM</time></td></tr><tr class="property-row property-row-multi_select"><th><span class="icon property-icon"><img src="https://app.notion.com/icons/list_gray.svg" style="width:14px;height:14px;display:block"/></span>Category</th><td><span class="selected-value select-value-color-purple">Databases</span></td></tr><tr class="property-row property-row-last_edited_by"><th><span class="icon property-icon"><img src="https://app.notion.com/icons/user-circle_gray.svg" style="width:14px;height:14px;display:block"/></span>Last edited by</th><td><span class="user"><img src="https://lh3.googleusercontent.com/a/ACg8ocIovZyeY_p2I5J56yzeUvP8mXK3HDaglubYoo34t8l4HXazMvD8=s100" class="icon user-icon"/>Ali Ghalambaz</span></td></tr><tr class="property-row property-row-last_edited_time"><th><span class="icon property-icon"><img src="https://app.notion.com/icons/clock_gray.svg" style="width:14px;height:14px;display:block"/></span>Last updated time</th><td><time>June 17, 2026 11:24 PM</time></td></tr><tr class="property-row property-row-number"><th><span class="icon property-icon"><img src="https://app.notion.com/icons/hashtag_gray.svg" style="width:14px;height:14px;display:block"/></span></th><td>2</td></tr><tr class="property-row property-row-select"><th><span class="icon property-icon"><img src="https://app.notion.com/icons/arrow-circle-down_gray.svg" style="width:14px;height:14px;display:block"/></span>Level</th><td><span class="selected-value select-value-color-green">Intermediate</span></td></tr><tr class="property-row property-row-status"><th><span class="icon property-icon"><img src="https://app.notion.com/icons/burst_gray.svg" style="width:14px;height:14px;display:block"/></span>Status</th><td><span class="status-value select-value-color-yellow"><div class="status-dot status-dot-color-yellow"></div>Editing</span></td></tr><tr class="property-row property-row-multi_select"><th><span class="icon property-icon"><img src="https://app.notion.com/icons/list_gray.svg" style="width:14px;height:14px;display:block"/></span>Tags</th><td><span class="selected-value select-value-color-gray">architecture</span><span class="selected-value select-value-color-orange">cdc</span><span class="selected-value select-value-color-blue">data engineering</span><span class="selected-value select-value-color-blue">database</span><span class="selected-value select-value-color-red">event-driven</span><span class="selected-value select-value-color-default">mongodb</span><span class="selected-value select-value-color-green">mysql</span><span class="selected-value select-value-color-pink">postgresql</span></td></tr><tr class="property-row property-row-number"><th><span class="icon property-icon"><img src="https://app.notion.com/icons/hashtag_gray.svg" style="width:14px;height:14px;display:block"/></span>Time to Read</th><td>8</td></tr><tr class="property-row property-row-select"><th><span class="icon property-icon"><img src="https://app.notion.com/icons/arrow-circle-down_gray.svg" style="width:14px;height:14px;display:block"/></span>Type</th><td><span class="selected-value select-value-color-purple">Explainer</span></td></tr><tr class="property-row property-row-text"><th><span class="icon property-icon"><img src="https://app.notion.com/icons/description_gray.svg" style="width:14px;height:14px;display:block"/></span>slug</th><td>listening-to-the-heartbeat-of-your-database-understanding-change-data-capture-cdc</td></tr></tbody></table></header><div class="page-body"><div style="display:contents" dir="auto"><h1 id="3786d16f-7385-80eb-8eb6-c32b3e576503" class=""></h1></div><div style="display:contents" dir="auto"><blockquote id="3786d16f-7385-8081-b5df-c3dcfd1baaf3" class="">CDC stands for <strong>Change Data Capture</strong>.</blockquote></div><div style="display:contents" dir="auto"><h2 id="3786d16f-7385-8085-8880-e5d5f891db38" class="">What You Will Learn</h2></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-80e0-b454-e32ceafda08f" class="bulleted-list"><li style="list-style-type:disc">What CDC is</li></ul></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-8004-b028-f35be3ff6c85" class="bulleted-list"><li style="list-style-type:disc">The story behind it</li></ul></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-8026-8345-e455bfc0b23b" class="bulleted-list"><li style="list-style-type:disc">How it works internally</li></ul></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-80f2-9ef6-c08461c79707" class="bulleted-list"><li style="list-style-type:disc">Common use cases</li></ul></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-80b7-a5d9-e9d12de2caf4" class="bulleted-list"><li style="list-style-type:disc">A simplified implementation example</li></ul></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80c2-8417-f85cb8e2fd94" class=""><strong>Estimated reading time:</strong> 10–15 minutes</p></div><div style="display:contents" dir="auto"><hr id="3786d16f-7385-806a-8962-e46aec971dab"/></div><div style="display:contents" dir="auto"><h1 id="3786d16f-7385-803f-9330-d22e459ba229" class="">What Is CDC?</h1></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-8046-8587-e6cbc76e5163" class="">Change Data Capture (CDC) is a technique for capturing changes made to data and exposing those changes to external systems.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80db-84e1-c207373fa519" class="">Instead of repeatedly querying a database to check whether something has changed, CDC allows applications to consume a stream of inserts, updates, and deletes as they happen.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-803a-9a14-eb7c9416d383" class="">Think of CDC as a way to listen to the heartbeat of your database.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80c5-8912-cd4ffb89f6c3" class="">Every time data changes, the database records that change internally. CDC makes those changes available so that other systems can react to them in real time.</p></div><div style="display:contents" dir="auto"><hr id="3786d16f-7385-8046-acbe-ce7bb17f3ec7"/></div><div style="display:contents" dir="auto"><h1 id="3786d16f-7385-8077-8d02-de86dd5162dd" class="">The Story Behind CDC</h1></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-800b-b85f-d2a87c1aff23" class="">To understand CDC, it helps to understand how databases have worked for decades.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-804a-89d2-edaa4c8b261a" class="">Whenever data changes, databases do not simply overwrite the old value and move on. They maintain an internal record of operations that have occurred.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-803f-85f8-f904b0ab5234" class="">These records are commonly stored in transaction logs.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80e0-9f2f-cfbf5844edcb" class="">Historically, every database implemented these logs differently, but the purpose was always the same:</p></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-808e-84c5-c694768c4301" class="bulleted-list"><li style="list-style-type:disc">Record every change made to the database</li></ul></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-8026-8477-e8f026b8e7e7" class="bulleted-list"><li style="list-style-type:disc">Recover from failures</li></ul></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-8024-9f18-f91e7628f345" class="bulleted-list"><li style="list-style-type:disc">Replicate data to other nodes</li></ul></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-800a-923b-e84bf1602437" class="bulleted-list"><li style="list-style-type:disc">Maintain consistency</li></ul></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-8050-baa5-fcdd7a2d2c16" class="">Every insert, update, and delete operation generates a log entry.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80a6-9e20-eceda45417cf" class="">These entries are ordered and identified by a unique position or token.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-805a-9444-ee7a6095c0b8" class="">The ordering is critical.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80a1-9eeb-e9ca543df662" class="">Imagine the following sequence:</p></div><div style="display:contents" dir="auto"><ol type="1" id="3786d16f-7385-80d4-b805-c27b35c9d357" class="numbered-list" start="1"><li>Create User</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="3786d16f-7385-8083-b1bf-d0fd800df5fe" class="numbered-list" start="2"><li>Update User</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="3786d16f-7385-800a-a3f1-ebfca62813a9" class="numbered-list" start="3"><li>Delete User</li></ol></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-8074-989a-f0dc63ebe355" class="">If a replica applied these operations in a different order, it would end up with completely different data.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-8072-a164-d7a13ea94f5b" class="">Because these logs are ordered, databases can reliably replay changes and reconstruct state over time.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80f9-a2ad-e341ffbef004" class="">This is how replication works in many database systems.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-801f-8083-da59cdff9fac" class="">A replica typically starts with an initial snapshot and then continuously applies new changes by replaying the transaction log.</p></div><div style="display:contents" dir="auto"><hr id="3786d16f-7385-8095-9423-dc13a4b460b1"/></div><div style="display:contents" dir="auto"><h1 id="3786d16f-7385-80ff-a977-ed112ba60a67" class="">Where CDC Comes In</h1></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-8013-aaad-c04a078d5717" class="">Originally, these logs were intended for the database itself.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-801a-a2be-c827320b76fa" class="">CDC extends that idea by allowing external applications to consume those same changes.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-8079-8fb4-e068b7bccf45" class="">Instead of only replicas reading database changes, your applications can read them too.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80bd-b477-eeadd106fef3" class="">This means that whenever data changes, you can react immediately without constantly querying the database.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80a6-b4cd-de31e714ca33" class="">The underlying idea is simple:</p></div><div style="display:contents" dir="auto"><blockquote id="3786d16f-7385-80e2-98e6-e3e423ad9ea5" class="">Expose an ordered stream of database changes that external systems can consume reliably.</blockquote></div><div style="display:contents" dir="auto"><hr id="3786d16f-7385-80b9-bb2f-e6062d34af52"/></div><div style="display:contents" dir="auto"><h1 id="3786d16f-7385-801f-9541-f39380985fa8" class="">How CDC Works</h1></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80e4-978a-e2288b3a8522" class="">Different databases implement CDC differently, but the concept remains the same.</p></div><div style="display:contents" dir="auto"><h3 id="3786d16f-7385-80d6-afdf-da030011c337" class="">MongoDB</h3></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-8022-98af-e9e5476354ff" class="">MongoDB provides CDC through <strong>Change Streams</strong>.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-8088-b4e2-e45a673c86e7" class="">Each event contains a <strong>resume token</strong>, which allows consumers to continue reading from the last processed change after a restart or failure.</p></div><div style="display:contents" dir="auto"><h3 id="3786d16f-7385-80ad-ba37-c6a5ad45b210" class="">MySQL</h3></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80ea-9470-fc744e85037e" class="">MySQL exposes changes through its <strong>Binary Log (Binlog)</strong>.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-801c-b8df-ea170f58f188" class="">CDC tools can read the binlog and transform database operations into events.</p></div><div style="display:contents" dir="auto"><h3 id="3786d16f-7385-8061-9e2d-c4aa8e3b86f2" class="">PostgreSQL</h3></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80d5-89bb-e9a0d1d63cb0" class="">PostgreSQL provides CDC through <strong>Logical Decoding</strong> and <strong>Logical Replication</strong>.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80b7-9e5e-eadfd8465e03" class="">These mechanisms allow applications to consume database changes in order.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80f8-9f42-f9f00c62c48b" class="">Although the implementations differ, they all provide the same capability:</p></div><div style="display:contents" dir="auto"><blockquote id="3786d16f-7385-8067-972f-e3e2f03cfac0" class="">An ordered stream of database changes.</blockquote></div><div style="display:contents" dir="auto"><hr id="3786d16f-7385-80df-bed8-f744828c4fd6"/></div><div style="display:contents" dir="auto"><h1 id="3786d16f-7385-8065-96ea-de3a5b9656b0" class="">CDC Is Usually Pull-Based</h1></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-809f-a37f-eb9e49afe489" class="">One common misconception is that databases push changes directly to your application.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80ba-b3b9-e181f9aa53bb" class="">In reality, most CDC implementations are fundamentally pull-based.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80e8-a892-ede81e532cc9" class="">The consumer requests the next available change from the database.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80ce-8698-e36f3961afde" class="">However, applications typically maintain a long-lived connection or cursor, making the experience feel very similar to receiving pushed events.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-8023-9cbd-ef6bdccc95c0" class="">For example, MongoDB&#x27;s <code>watch()</code> API keeps a stream open and continuously delivers new events as they become available.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-805c-a7ce-c89fb8d9ec09" class="">From the application&#x27;s perspective, it feels real-time.</p></div><div style="display:contents" dir="auto"><hr id="3786d16f-7385-802a-b36e-ff8f4b12c090"/></div><div style="display:contents" dir="auto"><h1 id="3786d16f-7385-8046-9cca-f74c9019d223" class="">A Simplified CDC Example</h1></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-8040-a4ce-db3e6b8f15c4" class="">To understand the concept, imagine that every database change is converted into a standardized event.</p></div><div style="display:contents" dir="auto"><script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" integrity="sha512-7Z9J3l1+EYfeaPKcGXu3MS/7T+w19WtKQY/n+xzmw4hZhJ9tyYmcUS+4QqAlzhicE5LAfMQSF3iFTK9bQdTxXg==" crossorigin="anonymous" referrerPolicy="no-referrer"></script><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" integrity="sha512-tN7Ec6zAFaVSG3TpNAKtk4DOHNpSwKHxxrsiw4GHKESGPs5njn/0sMCUMl2svV4wo4BK/rCP7juYz+zx+l6oeQ==" crossorigin="anonymous" referrerPolicy="no-referrer"/><script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup-templating.min.js" integrity="sha512-+8BiRfWso6waiFDv6tEmWF8yfPGgxAtOYLDUB0rRISLwtpxkJ9lpPNUhxwWlikn3qSO+4RQyzDppi62o3ON/AA==" crossorigin="anonymous" referrerPolicy="no-referrer"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js" integrity="sha512-plzrTi61ltEMFf84gTVO9IkvIMfBu07bnDuahvdlIclmFWzXJ9VcRsny9d45sxFZRv3jJg/MHNyuxnUYEMxMEg==" crossorigin="anonymous" referrerPolicy="no-referrer"></script><pre id="3786d16f-7385-8050-a109-f3400d7ac35a" class="code code-wrap"><code class="language-php" style="white-space:pre-wrap;word-break:break-all">function captureDataChange($operation, $table, $id, $before, $after)
 {
     $cdcEvent = [
         &quot;metadata&quot; =&gt; [
@@ -1279,16 +761,7 @@ captureDataChange(
     42,
     [&quot;name&quot; =&gt; &quot;Alice&quot;, &quot;role&quot; =&gt; &quot;Developer&quot;],
     [&quot;name&quot; =&gt; &quot;Alice&quot;, &quot;role&quot; =&gt; &quot;Architect&quot;]
-);</code></pre>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80a8-be6e-e45e414a2f94" class="">Output:</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"
-					integrity="sha512-QXFMVAusM85vUYDaNgcYeU3rzSlc+bTV4JvkfJhjxSHlQEo+ig53BtnGkvFTiNJh8D+wv6uWAQ2vJaVmxe8d3w=="
-					crossorigin="anonymous" referrerPolicy="no-referrer"></script>
-				<pre id="3786d16f-7385-802c-8157-e4ceae02f5f7" class="code code-wrap"><code class="language-json" style="white-space:pre-wrap;word-break:break-all">{
+);</code></pre></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80a8-be6e-e45e414a2f94" class="">Output:</p></div><div style="display:contents" dir="auto"><script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js" integrity="sha512-QXFMVAusM85vUYDaNgcYeU3rzSlc+bTV4JvkfJhjxSHlQEo+ig53BtnGkvFTiNJh8D+wv6uWAQ2vJaVmxe8d3w==" crossorigin="anonymous" referrerPolicy="no-referrer"></script><pre id="3786d16f-7385-802c-8157-e4ceae02f5f7" class="code code-wrap"><code class="language-json" style="white-space:pre-wrap;word-break:break-all">{
   &quot;metadata&quot;: {
     &quot;operation&quot;: &quot;UPDATE&quot;,
     &quot;table&quot;: &quot;users&quot;,
@@ -1302,222 +775,6 @@ captureDataChange(
     &quot;name&quot;: &quot;Alice&quot;,
     &quot;role&quot;: &quot;Architect&quot;
   }
-}</code></pre>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-800d-8a81-f4b95838512c" class="">Real CDC systems work differently under the hood,
-					but the idea is very similar:</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ol type="1" id="3786d16f-7385-80be-a6f0-e886b52e84f1" class="numbered-list" start="1">
-					<li>Detect a database change</li>
-				</ol>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ol type="1" id="3786d16f-7385-8049-a5bb-ed010b1576fb" class="numbered-list" start="2">
-					<li>Convert it into an event</li>
-				</ol>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ol type="1" id="3786d16f-7385-8067-81d6-cf0b586aae20" class="numbered-list" start="3">
-					<li>Publish it to interested consumers</li>
-				</ol>
-			</div>
-			<div style="display:contents" dir="auto">
-				<hr id="3786d16f-7385-80e0-8350-d8058c171b81" />
-			</div>
-			<div style="display:contents" dir="auto">
-				<h1 id="3786d16f-7385-807a-b1b5-f0d647d5242b" class="">CDC vs Traditional Polling</h1>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-8028-a705-d1cadafadc68" class="">Without CDC, applications often use polling.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-8058-815a-f3600651a7f7" class="">For example:</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"
-					integrity="sha512-sijCOJblSCXYYmXdwvqV0tak8QJW5iy2yLB1wAbbLc3OOIueqymizRFWUS/mwKctnzPKpNdPJV3aK1zlDMJmXQ=="
-					crossorigin="anonymous" referrerPolicy="no-referrer"></script>
-				<pre id="3786d16f-7385-8091-a7c8-ee1a4f9aeb28" class="code code-wrap"><code class="language-sql" style="white-space:pre-wrap;word-break:break-all">SELECT *
+}</code></pre></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-800d-8a81-f4b95838512c" class="">Real CDC systems work differently under the hood, but the idea is very similar:</p></div><div style="display:contents" dir="auto"><ol type="1" id="3786d16f-7385-80be-a6f0-e886b52e84f1" class="numbered-list" start="1"><li>Detect a database change</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="3786d16f-7385-8049-a5bb-ed010b1576fb" class="numbered-list" start="2"><li>Convert it into an event</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="3786d16f-7385-8067-81d6-cf0b586aae20" class="numbered-list" start="3"><li>Publish it to interested consumers</li></ol></div><div style="display:contents" dir="auto"><hr id="3786d16f-7385-80e0-8350-d8058c171b81"/></div><div style="display:contents" dir="auto"><h1 id="3786d16f-7385-807a-b1b5-f0d647d5242b" class="">CDC vs Traditional Polling</h1></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-8028-a705-d1cadafadc68" class="">Without CDC, applications often use polling.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-8058-815a-f3600651a7f7" class="">For example:</p></div><div style="display:contents" dir="auto"><script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js" integrity="sha512-sijCOJblSCXYYmXdwvqV0tak8QJW5iy2yLB1wAbbLc3OOIueqymizRFWUS/mwKctnzPKpNdPJV3aK1zlDMJmXQ==" crossorigin="anonymous" referrerPolicy="no-referrer"></script><pre id="3786d16f-7385-8091-a7c8-ee1a4f9aeb28" class="code code-wrap"><code class="language-sql" style="white-space:pre-wrap;word-break:break-all">SELECT *
 FROM orders
-WHERE updated_at &gt; :last_seen_timestamp;</code></pre>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-8038-b54d-f3e05a4ffe7d" class="">This approach works, but it has drawbacks:</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-80fe-931f-dbcaf6d45eb8" class="bulleted-list">
-					<li style="list-style-type:disc">Additional load on the database</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-80ba-911f-f35f366dd36a" class="bulleted-list">
-					<li style="list-style-type:disc">Expensive queries at scale</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-80d5-b18f-cba9c8c4b5c7" class="bulleted-list">
-					<li style="list-style-type:disc">Possibility of missing updates</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-8040-8945-d90226e2af0b" class="bulleted-list">
-					<li style="list-style-type:disc">Duplicate processing logic</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80b2-aae0-e9885f514e5f" class="">CDC avoids these problems by consuming changes
-					directly from the database&#x27;s change stream.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-809d-bb3e-ff91f2acb1ad" class="">Instead of repeatedly asking:</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<blockquote id="3786d16f-7385-80b2-9114-c003f4eb9de8" class="">&quot;Has anything changed?&quot;
-				</blockquote>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80b1-879f-eb1852691b1c" class="">the database tells you:</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<blockquote id="3786d16f-7385-8001-a2b1-cf9900e1e2d4" class="">&quot;This is what changed.&quot;
-				</blockquote>
-			</div>
-			<div style="display:contents" dir="auto">
-				<hr id="3786d16f-7385-80a6-b585-efbab35fde9d" />
-			</div>
-			<div style="display:contents" dir="auto">
-				<h1 id="3786d16f-7385-802c-b211-fb4f953f9917" class="">Why CDC Matters</h1>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-805b-80f8-fb2400d35980" class="">CDC is more than a database feature.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80a0-a732-e9e7e547eb26" class="">It is an architectural building block.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-8027-979b-f89683a715b6" class="">Once database changes become events, many new
-					possibilities emerge.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80ec-9785-e81a693e31d7" class="">Common use cases include:</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-80f0-a8c0-c7f838c9c1a4" class="bulleted-list">
-					<li style="list-style-type:disc">Search index synchronization (Elasticsearch/OpenSearch)</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-8086-8e0f-f988e6555ef7" class="bulleted-list">
-					<li style="list-style-type:disc">Analytics pipelines</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-806a-92c4-eb4c3b7e94da" class="bulleted-list">
-					<li style="list-style-type:disc">Event-driven architectures</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-80e1-94a8-cdc35b903951" class="bulleted-list">
-					<li style="list-style-type:disc">Cache invalidation</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-8084-9550-fa138dde3349" class="bulleted-list">
-					<li style="list-style-type:disc">Audit trails</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-80bd-9883-d272942207bd" class="bulleted-list">
-					<li style="list-style-type:disc">Data warehouse synchronization</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-804e-9e98-cc8d6e5784c5" class="bulleted-list">
-					<li style="list-style-type:disc">Building materialized views</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-8060-ae2d-c442c7c30e05" class="bulleted-list">
-					<li style="list-style-type:disc">Synchronizing data across services</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-8006-b229-df1b6fe4c1d2" class="">For example, when a product is updated in your
-					database, a CDC consumer can automatically update:</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-80f7-b7c4-f6dad178c95b" class="bulleted-list">
-					<li style="list-style-type:disc">Search indexes</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-8018-b683-e5561c5773dd" class="bulleted-list">
-					<li style="list-style-type:disc">Caches</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-80d5-b118-ddde29f17aa8" class="bulleted-list">
-					<li style="list-style-type:disc">Reporting systems</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="3786d16f-7385-80fb-a5a9-dac730bcf3d8" class="bulleted-list">
-					<li style="list-style-type:disc">Recommendation engines</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80aa-b459-e0c65292fcfd" class="">without requiring changes to the original
-					application.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<hr id="3786d16f-7385-80e3-8c86-e60c4fbb0a43" />
-			</div>
-			<div style="display:contents" dir="auto">
-				<h1 id="3786d16f-7385-8071-a4c5-dabc76641048" class="">CDC in Modern Architectures</h1>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-8082-95b1-dea683734129" class="">Many organizations use CDC platforms such as
-					Debezium to provide a unified way of consuming changes across different databases.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-8053-a20b-f3567de7ace7" class="">These platforms often publish CDC events into
-					systems such as Apache Kafka, where multiple consumers can process the same stream independently.
-				</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-8093-bfc5-d4714372242b" class="">This makes CDC a key building block in modern
-					event-driven systems.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<hr id="3786d16f-7385-8074-aa55-f755fd36c18a" />
-			</div>
-			<div style="display:contents" dir="auto">
-				<h1 id="3786d16f-7385-80bc-a443-fc468a8d39a1" class="">Final Thoughts</h1>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-802c-88a6-c746f7f5a2fa" class="">At its core, CDC is a simple idea:</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<blockquote id="3786d16f-7385-80b2-ba55-eec74bdae2d7" class="">Every database change is already being
-					recorded somewhere. CDC allows external systems to listen to those changes.</blockquote>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-80e7-913e-c5f49d5748e4" class="">Whether it is MongoDB Change Streams, MySQL
-					Binlogs, or PostgreSQL Logical Replication, the principle remains the same:</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-809b-90a6-ee2e7d440980" class="">An ordered stream of database changes that can be
-					consumed reliably.</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="3786d16f-7385-804a-964d-effcb859e8b7" class="">Once you start viewing database updates as events
-					rather than rows being modified, CDC becomes one of the most powerful tools for building scalable
-					and loosely coupled systems.</p>
-			</div>
-		</div>
-	</article><span class="sans" style="font-size:14px;padding-top:2em"></span>
-</body>
-
-</html>
+WHERE updated_at &gt; :last_seen_timestamp;</code></pre></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-8038-b54d-f3e05a4ffe7d" class="">This approach works, but it has drawbacks:</p></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-80fe-931f-dbcaf6d45eb8" class="bulleted-list"><li style="list-style-type:disc">Additional load on the database</li></ul></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-80ba-911f-f35f366dd36a" class="bulleted-list"><li style="list-style-type:disc">Expensive queries at scale</li></ul></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-80d5-b18f-cba9c8c4b5c7" class="bulleted-list"><li style="list-style-type:disc">Possibility of missing updates</li></ul></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-8040-8945-d90226e2af0b" class="bulleted-list"><li style="list-style-type:disc">Duplicate processing logic</li></ul></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80b2-aae0-e9885f514e5f" class="">CDC avoids these problems by consuming changes directly from the database&#x27;s change stream.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-809d-bb3e-ff91f2acb1ad" class="">Instead of repeatedly asking:</p></div><div style="display:contents" dir="auto"><blockquote id="3786d16f-7385-80b2-9114-c003f4eb9de8" class="">&quot;Has anything changed?&quot;</blockquote></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80b1-879f-eb1852691b1c" class="">the database tells you:</p></div><div style="display:contents" dir="auto"><blockquote id="3786d16f-7385-8001-a2b1-cf9900e1e2d4" class="">&quot;This is what changed.&quot;</blockquote></div><div style="display:contents" dir="auto"><hr id="3786d16f-7385-80a6-b585-efbab35fde9d"/></div><div style="display:contents" dir="auto"><h1 id="3786d16f-7385-802c-b211-fb4f953f9917" class="">Why CDC Matters</h1></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-805b-80f8-fb2400d35980" class="">CDC is more than a database feature.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80a0-a732-e9e7e547eb26" class="">It is an architectural building block.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-8027-979b-f89683a715b6" class="">Once database changes become events, many new possibilities emerge.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80ec-9785-e81a693e31d7" class="">Common use cases include:</p></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-80f0-a8c0-c7f838c9c1a4" class="bulleted-list"><li style="list-style-type:disc">Search index synchronization (Elasticsearch/OpenSearch)</li></ul></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-8086-8e0f-f988e6555ef7" class="bulleted-list"><li style="list-style-type:disc">Analytics pipelines</li></ul></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-806a-92c4-eb4c3b7e94da" class="bulleted-list"><li style="list-style-type:disc">Event-driven architectures</li></ul></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-80e1-94a8-cdc35b903951" class="bulleted-list"><li style="list-style-type:disc">Cache invalidation</li></ul></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-8084-9550-fa138dde3349" class="bulleted-list"><li style="list-style-type:disc">Audit trails</li></ul></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-80bd-9883-d272942207bd" class="bulleted-list"><li style="list-style-type:disc">Data warehouse synchronization</li></ul></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-804e-9e98-cc8d6e5784c5" class="bulleted-list"><li style="list-style-type:disc">Building materialized views</li></ul></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-8060-ae2d-c442c7c30e05" class="bulleted-list"><li style="list-style-type:disc">Synchronizing data across services</li></ul></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-8006-b229-df1b6fe4c1d2" class="">For example, when a product is updated in your database, a CDC consumer can automatically update:</p></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-80f7-b7c4-f6dad178c95b" class="bulleted-list"><li style="list-style-type:disc">Search indexes</li></ul></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-8018-b683-e5561c5773dd" class="bulleted-list"><li style="list-style-type:disc">Caches</li></ul></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-80d5-b118-ddde29f17aa8" class="bulleted-list"><li style="list-style-type:disc">Reporting systems</li></ul></div><div style="display:contents" dir="auto"><ul id="3786d16f-7385-80fb-a5a9-dac730bcf3d8" class="bulleted-list"><li style="list-style-type:disc">Recommendation engines</li></ul></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80aa-b459-e0c65292fcfd" class="">without requiring changes to the original application.</p></div><div style="display:contents" dir="auto"><hr id="3786d16f-7385-80e3-8c86-e60c4fbb0a43"/></div><div style="display:contents" dir="auto"><h1 id="3786d16f-7385-8071-a4c5-dabc76641048" class="">CDC in Modern Architectures</h1></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-8082-95b1-dea683734129" class="">Many organizations use CDC platforms such as Debezium to provide a unified way of consuming changes across different databases.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-8053-a20b-f3567de7ace7" class="">These platforms often publish CDC events into systems such as Apache Kafka, where multiple consumers can process the same stream independently.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-8093-bfc5-d4714372242b" class="">This makes CDC a key building block in modern event-driven systems.</p></div><div style="display:contents" dir="auto"><hr id="3786d16f-7385-8074-aa55-f755fd36c18a"/></div><div style="display:contents" dir="auto"><h1 id="3786d16f-7385-80bc-a443-fc468a8d39a1" class="">Final Thoughts</h1></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-802c-88a6-c746f7f5a2fa" class="">At its core, CDC is a simple idea:</p></div><div style="display:contents" dir="auto"><blockquote id="3786d16f-7385-80b2-ba55-eec74bdae2d7" class="">Every database change is already being recorded somewhere. CDC allows external systems to listen to those changes.</blockquote></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-80e7-913e-c5f49d5748e4" class="">Whether it is MongoDB Change Streams, MySQL Binlogs, or PostgreSQL Logical Replication, the principle remains the same:</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-809b-90a6-ee2e7d440980" class="">An ordered stream of database changes that can be consumed reliably.</p></div><div style="display:contents" dir="auto"><p id="3786d16f-7385-804a-964d-effcb859e8b7" class="">Once you start viewing database updates as events rather than rows being modified, CDC becomes one of the most powerful tools for building scalable and loosely coupled systems.</p></div></div></article><span class="sans" style="font-size:14px;padding-top:2em"></span></body></html>
