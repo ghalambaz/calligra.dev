@@ -9,7 +9,7 @@
      • Subtitle    : 
      • Slug        : listening-to-the-heartbeat-of-your-database-understanding-change-data-capture-cdc
      • Tags        : cdc, database, mysql, mongodb, postgresql, event-driven, data engineering, architecture
-     • Cover image : https://calligra.dev/images/blog/listening-to-the-heartbeat-of-your-database-understanding-change-data-capture-cdc/cover.png
+     • Cover image : https://calligra.dev/images/blog/listening-to-the-heartbeat-of-your-database-understanding-change-data-capture-cdc/cover.jpg
 
   3. Under "SEO" settings:
      • Canonical URL: https://calligra.dev/blog/listening-to-the-heartbeat-of-your-database-understanding-change-data-capture-cdc
@@ -28,8 +28,6 @@
 - How it works internally
 - Common use cases
 - A simplified implementation example
-
-**Estimated reading time:** 10–15 minutes
 
 ---
 
