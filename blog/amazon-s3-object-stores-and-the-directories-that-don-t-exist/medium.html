@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Amazon S3, Object Stores, and the Directories That Don't Exist</title>
+  <!--
+    MEDIUM PUBLISH INSTRUCTIONS
+    ══════════════════════════════════════════════════════
+    1. Open this file in your browser (File > Open, or drag it in).
+    2. Press Ctrl+A (Cmd+A on Mac) to select everything, then Ctrl+C to copy.
+    3. Go to medium.com → Write a story → click into the editor → Ctrl+V to paste.
+    4. After pasting, set:
+       • Title: Amazon S3, Object Stores, and the Directories That Don't Exist
+       • Subtitle / description: 
+       • Tags (up to 5): s3, amazon, web services, object-storage, devops
+    5. Before publishing → "..." menu → "Change display title/subtitle"
+    6. Set "Originally published at": https://calligra.dev/blog/amazon-s3-object-stores-and-the-directories-that-don-t-exist
+    7. Cover image: The first image in the paste should appear as cover.
+       If not, use this URL directly in Medium's cover uploader:
+       https://calligra.dev/images/blog/amazon-s3-object-stores-and-the-directories-that-don-t-exist/cover.png
+    ══════════════════════════════════════════════════════
+  -->
+  <style>
+    /*
+     * These styles only affect local preview in your browser.
+     * Medium strips all CSS when you paste — that's expected.
+     */
+    body        { font-family: Georgia, serif; max-width: 740px; margin: 40px auto; line-height: 1.75; color: #292929; }
+    h1          { font-size: 2rem; font-weight: 700; margin-bottom: 0.25em; }
+    h2          { font-size: 1.5rem; font-weight: 700; margin-top: 2em; }
+    h3          { font-size: 1.2rem; font-weight: 600; margin-top: 1.5em; }
+    p           { margin: 1em 0; }
+    pre         { background: #f4f4f4; padding: 1em; border-radius: 4px; overflow-x: auto; }
+    code        { font-family: monospace; font-size: 0.9em; }
+    blockquote  { border-left: 3px solid #ccc; margin: 1em 0; padding-left: 1em; color: #555; }
+    img         { max-width: 100%; height: auto; display: block; margin: 1.5em 0; }
+    a           { color: #1a8917; }
+  </style>
+</head>
+<body>
+  <img src="https://calligra.dev/images/blog/amazon-s3-object-stores-and-the-directories-that-don-t-exist/cover.png" alt="Amazon S3, Object Stores, and the Directories That Don't Exist cover image" />
+  <h1>Amazon S3, Object Stores, and the Directories That Don't Exist</h1>
+<h2>S3 and Object Storage</h2>
+<p>Most of us have used Amazon S3 at some point and may have wondered:</p>
+<em>If AWS provides S3, why are we using Linode Object Storage or MinIO instead?</em><p>The reason is that Amazon S3 is both a service and a de facto API standard for object storage.</p>
+<p>AWS provides S3 as its managed object storage service, but other vendors such as Linode and MinIO also offer object storage solutions that implement the S3-compatible API. This allows applications written for S3 to work with different storage providers with little or no code changes.</p>
+<p>Recently, we migrated our object storage from MinIO to Linode. Although we do not use AWS S3 itself, our applications still communicate using the S3-compatible API.</p>
+<p>One important thing to keep in mind is that third-party implementations are not always identical to AWS S3. Some providers may only partially implement the S3 API, behave slightly differently, or not support all available features.</p>
+<hr>
+<h2>Directories in Object Storage</h2>
+<p>When working with object storage, you&#39;ve probably seen structures that look like directories:</p>
+<pre>versions/
+└── object/
+    └── g0/
+        └── something.xxx</pre><p>At first glance, this looks very similar to a traditional filesystem. But are these actually directories?</p>
+<p>The answer is <strong>no</strong>.</p>
+<p>Object storage does not store files in real directories. Instead, every object is stored with a unique key (identifier). What looks like a path is simply part of the object&#39;s name.</p>
+<p>For example, an object may have the following key:</p>
+<pre>versions/object/g0/something.xxx</pre><p>This is a single object key, not a file stored inside nested directories.</p>
+<p>The <code>/</code> character is simply a naming convention used to organize object names. Management tools and UIs use these prefixes to simulate a directory structure, but the folders themselves do not actually exist.</p>
+<p>Understanding this helps explain why operations such as recursively deleting a directory or listing directories are not native object-storage operations. In reality, there are no directories to delete—only objects whose keys share a common prefix.</p>
+<hr>
+<h2>Why &quot;Creating a Directory&quot; Looks Instant</h2>
+<p>When you create a directory in a traditional filesystem, metadata is written to disk.</p>
+<p>In object storage, creating a directory is often just creating an empty object or simply displaying a prefix in the UI. No real directory structure is created behind the scenes.</p>
+<p>For example, after uploading:</p>
+<pre>versions/object/g0/file.txt</pre><p>many S3 clients will automatically display:</p>
+<pre>versions/
+└── object/
+    └── g0/</pre><p>even though those directories do not actually exist.</p>
+<hr>
+<h2>What Happens When We List a &quot;Directory&quot;?</h2>
+<p>Consider the following command:</p>
+<pre>mc ls s3-pimcore-stg/nbb-pimcore-stg/version</pre><p>At first glance, it looks like we&#39;re listing the contents of a directory called <code>version</code>, but that&#39;s not actually what&#39;s happening.</p>
+<p>The path can be interpreted as:</p>
+<pre>s3-pimcore-stg   -> configured storage alias/endpoint
+nbb-pimcore-stg -> bucket name
+version         -> object key prefix</pre><p>The object storage server does not navigate a directory tree. Instead, it searches for objects whose keys begin with the specified prefix.</p>
+<p>Conceptually, this is closer to:</p>
+<pre>Find all objects in bucket "nbb-pimcore-stg"
+where key starts with "version"</pre><p>For example, if the bucket contains:</p>
+<pre>version/object/g0/file1.jpg
+version/object/g1/file2.jpg
+version/thumbs/file3.jpg</pre><p>all of these objects may be returned because they share the same prefix.</p>
+<p>This is not a regular-expression search. It is a <strong>prefix-based lookup</strong>, which is one of the core concepts used by object storage systems to simulate directories.</p>
+<hr>
+<h2>Why Recursive Delete Can Be Expensive</h2>
+<p>Deleting a directory in a traditional filesystem usually involves traversing the directory tree and removing its contents.</p>
+<p>In object storage, deleting a &quot;directory&quot; is fundamentally different:</p>
+<ol>
+<li>List all objects that share a specific prefix.</li>
+<li>Delete each matching object individually (or in batches).</li>
+</ol>
+<p>For a prefix containing thousands or millions of objects, this operation can become expensive and time-consuming because the storage system must first discover all matching objects before they can be removed.</p>
+<p>This is another consequence of the fact that object storage does not have real directories—it only has objects and object keys.</p>
+<em>Mental model: Treat object storage as a giant key-value store where the key happens to look like a file path. Once you think of it that way, most S3 behaviors become much easier to understand.</em><h2>Why This Matters</h2>
+<p>Understanding that object storage has <strong>objects and prefixes, not directories</strong> changes how you design applications around it.</p>
+<p>The same prefix-based lookup that makes a &quot;directory delete&quot; expensive also applies to listing: every time an application &quot;opens a folder,&quot; the storage service performs a prefix lookup rather than traversing a real directory tree. For a few dozen objects this is invisible. For millions, it shows up as extra LIST calls, slower responses, and—depending on your provider&#39;s pricing model—extra cost.</p>
+<h3>Design For Prefixes, Not Directories</h3>
+<p>A common mistake is treating object storage like a traditional filesystem.</p>
+<p>Instead of repeatedly listing prefixes:</p>
+<pre>versions/
+ └── object/
+      └── g0/</pre><p>consider storing the object keys you already know in a database or index.</p>
+<p>For example:</p>
+<pre>id | object_key
+---+-----------------------------------
+1  | versions/object/g0/file1.jpg
+2  | versions/object/g0/file2.jpg</pre><p>Now you can fetch the keys directly and perform batch operations without repeatedly asking the object store to discover them.</p>
+<p>Similarly:</p>
+<ul>
+<li>Prefer batch deletes over deleting objects one by one.</li>
+<li>Avoid repeatedly listing the same prefix in loops.</li>
+<li>Use lifecycle policies when objects have predictable expiration dates.</li>
+<li>Organize object keys so that related objects share predictable prefixes.</li>
+</ul>
+<p>The goal is simple:</p>
+<em>If your application already knows the object keys, don&#39;t ask the storage system to find them again.</em><h3>A Note About Costs</h3>
+<p>Many object storage providers charge not only for stored data but also for API requests. AWS S3, for example, charges for LIST, PUT, COPY, and GET operations, while DELETE requests themselves are free. However, deleting a large prefix often requires LIST operations first, which are billable.</p>
+<p>Because of this, good object-storage design is usually about reducing unnecessary discovery operations:</p>
+<p><strong>Less efficient:</strong></p>
+<pre>for each user:
+    list user folder
+    find files
+    delete files</pre><p><strong>More efficient:</strong></p>
+<pre>query database for object keys
+delete objects in batches</pre><p>S3 even provides a bulk delete API that can remove up to 1,000 objects in a single request, significantly reducing request overhead compared to deleting objects individually.</p>
+<p>A good rule of thumb is:</p>
+<em>Treat LIST operations as searches and DELETE operations as actions. Searches are often the expensive part, so avoid performing them when you already know the answer.</em><h2>Final Words</h2>
+<p>Treat object storage as a giant key-value store where the key happens to look like a file path—that one shift in thinking explains most of S3&#39;s quirky behavior around directories, listing, and deletes.</p>
+<h2>Further reading:</h2>
+<p>For a detailed breakdown of storage, request, and transfer pricing, see <a href="https://aws.amazon.com/s3/pricing/?nc=sn&loc=4&refid=aebc39a1-139c-43bb-8354-211ac811b83a">https://aws.amazon.com/s3/pricing/?nc=sn&amp;loc=4&amp;refid=aebc39a1-139c-43bb-8354-211ac811b83a</a></p>
+<p><strong>Ali Ghalambaz</strong></p>
+<p>Backend Engineer</p>
+
+</body>
+</html>
