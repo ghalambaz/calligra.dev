@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>OverlayFS Explained: How Docker's Filesystem Layers Actually Work</title>
+  <!--
+    MEDIUM PUBLISH INSTRUCTIONS
+    ══════════════════════════════════════════════════════
+    1. Open this file in your browser (File > Open, or drag it in).
+    2. Press Ctrl+A (Cmd+A on Mac) to select everything, then Ctrl+C to copy.
+    3. Go to medium.com → Write a story → click into the editor → Ctrl+V to paste.
+    4. After pasting, set:
+       • Title: OverlayFS Explained: How Docker's Filesystem Layers Actually Work
+       • Subtitle / description: 
+       • Tags (up to 5): docker, filesystem, containers, overlayfs, copy-on-write
+    5. Before publishing → "..." menu → "Change display title/subtitle"
+    6. Set "Originally published at": https://calligra.dev/blog/overlayfs-explained-how-docker-s-filesystem-layers-actually-work
+    7. Cover image: The first image in the paste should appear as cover.
+       If not, use this URL directly in Medium's cover uploader:
+       https://calligra.dev/images/blog/overlayfs-explained-how-docker-s-filesystem-layers-actually-work/cover.png
+    ══════════════════════════════════════════════════════
+  -->
+  <style>
+    /*
+     * These styles only affect local preview in your browser.
+     * Medium strips all CSS when you paste — that's expected.
+     */
+    body        { font-family: Georgia, serif; max-width: 740px; margin: 40px auto; line-height: 1.75; color: #292929; }
+    h1          { font-size: 2rem; font-weight: 700; margin-bottom: 0.25em; }
+    h2          { font-size: 1.5rem; font-weight: 700; margin-top: 2em; }
+    h3          { font-size: 1.2rem; font-weight: 600; margin-top: 1.5em; }
+    p           { margin: 1em 0; }
+    pre         { background: #f4f4f4; padding: 1em; border-radius: 4px; overflow-x: auto; }
+    code        { font-family: monospace; font-size: 0.9em; }
+    blockquote  { border-left: 3px solid #ccc; margin: 1em 0; padding-left: 1em; color: #555; }
+    img         { max-width: 100%; height: auto; display: block; margin: 1.5em 0; }
+    a           { color: #1a8917; }
+  </style>
+</head>
+<body>
+  <img src="https://calligra.dev/images/blog/overlayfs-explained-how-docker-s-filesystem-layers-actually-work/cover.png" alt="OverlayFS Explained: How Docker's Filesystem Layers Actually Work cover image" />
+  <h1>OverlayFS Explained: How Docker's Filesystem Layers Actually Work</h1>
+<h1>Preface</h1>
+<p>I have planned to write a series of articles to understand Docker under the hood and containers. I will start with the Overlay filesystem 🙂, but every journey should begin from the fundamentals.</p>
+<p>When you hear “Docker”, the first thing that comes to mind is “container”.</p>
+<p>And what about “Kubernetes”? Again, containers.</p>
+<p>Two different systems, same mental model.</p>
+<p>So what exactly are containers? And are they truly isolated and independent units of software?</p>
+<p>The short answer is: <strong>yes, but not in the way people usually think.</strong></p>
+<p>Containers have existed in Unix/Linux systems long before Docker. What Docker and Kubernetes did was to make them <strong>portable, standardized, and operationally usable at scale</strong>.</p>
+<hr>
+<h3>Recreation Time</h3>
+<p>Sometimes I say <strong>K8s</strong> because there are 8 letters between “K” and “s”.</p>
+<p>K[ubernete]s → “ubernete” = 8 characters → K8s.</p>
+<p>Just a naming shortcut. Nothing deeper.</p>
+<hr>
+<h3>Fun practice</h3>
+<p>How would you shorten my family name “Ghalambaz”?</p>
+<p>Maybe “G7z”. Now try your own version.</p>
+<hr>
+<p>Let’s get back to containers.</p>
+<hr>
+<h2>What is a container really?</h2>
+<p>A container is <strong>not a virtual machine</strong>.</p>
+<p>Instead, it is:</p>
+<em>A normal Linux process that is isolated using kernel features like namespaces and cgroups.</em><p>This isolation makes the process <em>feel</em> like it has its own system, but in reality it is still running on the host kernel.</p>
+<p>One of the core mechanisms behind this isolation is Linux’s namespace system, which includes a system call called <code>unshare</code>.</p>
+<p>So yes, <code>unshare</code> is powerful, but it is only one piece of a much larger puzzle.</p>
+<p>We will come back to this later.</p>
+<p>For now, we start with something even more fundamental to containers:</p>
+<p>👉 <strong>the filesystem layer model used by Docker: OverlayFS</strong></p>
+<hr>
+<h1>File Systems</h1>
+<p>Have you ever heard of filesystems like FAT32, NTFS, or EXT4?</p>
+<p>They define how the operating system:</p>
+<ul>
+<li>stores data on disk</li>
+<li>organizes files</li>
+<li>manages metadata</li>
+<li>retrieves data efficiently</li>
+</ul>
+<p>Each filesystem has different design goals, but I are not focusing on them here.</p>
+<p>Instead, I focus on a special filesystem type:</p>
+<em><strong>OverlayFS is the foundation of Docker image layering</strong></em><hr>
+<h1>What is OverlayFS?</h1>
+<p>OverlayFS is a <strong>union filesystem</strong> in Linux.</p>
+<p>It allows multiple directories (called layers) to appear as a single unified directory.</p>
+<hr>
+<h2>Simple mental model</h2>
+<p>Imagine two directories:</p>
+<p><strong>Directory A</strong></p>
+<ul>
+<li>A.txt</li>
+<li>C.txt</li>
+</ul>
+<p><strong>Directory B</strong></p>
+<ul>
+<li>B.txt</li>
+<li>C.txt</li>
+</ul>
+<p>Now I “merge” them into a virtual directory <strong>M</strong>.</p>
+<h3>What do you see in M?</h3>
+<ul>
+<li>A.txt</li>
+<li>B.txt</li>
+<li>C.txt</li>
+</ul>
+<p>But here is the important detail:</p>
+<em>There is no real merging or copying happening.</em><p>OverlayFS just <em>simulates</em> a merged view.</p>
+<hr>
+<h2>Important questions (this is where it gets interesting)</h2>
+<p>What happens when:</p>
+<ol>
+<li>Two files have the same name?</li>
+<li>You modify a file from the merged view?</li>
+<li>Where does a new file actually get written?</li>
+</ol>
+<p>These are the exact problems OverlayFS solves using a layered model. Keep these three questions in mind. I will answer all of them in the next section.</p>
+<hr>
+<h1>OverlayFS Architecture</h1>
+<p>OverlayFS has <strong>three main concepts</strong>:</p>
+<h2>1. Lower Layers (Read-only)</h2>
+<ul>
+<li>Multiple directories can exist</li>
+<li>They are stacked together</li>
+<li>They are immutable (read-only)</li>
+</ul>
+<p>These layers typically represent:</p>
+<ul>
+<li>Docker image layers</li>
+<li>Base OS filesystem</li>
+<li>Application dependencies</li>
+</ul>
+<p><strong>Answers question 1:</strong> if a file exists in more than one lower layer, the layer listed first (the “topmost” one) wins. I will see this live in the hands-on section.</p>
+<hr>
+<h2>2. Upper Layer (Writable)</h2>
+<p>This is where changes happen.</p>
+<ul>
+<li>New files are created here</li>
+<li>Modified files are copied here (copy-on-write)</li>
+<li>It is writable</li>
+</ul>
+<p><strong>Answers question 3:</strong> any new file you create always goes here, never into a lower layer.</p>
+<hr>
+<h2>3. Merged Layer (View Layer)</h2>
+<p>This is what the user sees.</p>
+<ul>
+<li>A unified view of all layers</li>
+<li>Read/write interface</li>
+<li>Does not contain real merged data</li>
+</ul>
+<hr>
+<h2>A note on <code>workdir</code></h2>
+<p>There is actually a small 4th directory the kernel needs, called <code>workdir</code>. You will see it in the hands-on example below.</p>
+<p><code>workdir</code> is not a “layer” you read from it’s internal scratch space the kernel uses to do copy-up operations safely (so a crash mid-write can’t corrupt your data). Two rules:</p>
+<ul>
+<li>it must live on the <strong>same filesystem</strong> as <code>upperdir</code></li>
+<li>you should never read or write to it yourself. just create an empty folder and let the kernel manage it</li>
+</ul>
+<em>⚠️ <strong>Don’t mix this up with Docker’s</strong> <strong><code>WORKDIR</code></strong> <strong>instruction.</strong> They share a name, but they are completely different things:Here, <code>COPY</code> and <code>RUN</code> both execute inside <code>/app</code>. It’s a metadata-only instruction (no real file content), so as I covered earlier, it creates an empty layer.</em><hr>
+<h1>Mental Model (Important)</h1>
+<p>Think of it like this:</p>
+<pre>User View (Merged)
+                 |
+     -----------------------------
+     |            |             |
+ Lower Layer   Lower Layer   Upper Layer
+ (read-only)   (read-only)   (read-write)
+                                  |
+                              workdir
+                          (kernel scratch space)</pre><hr>
+<h2>How file resolution works</h2>
+<p>When you access a file:</p>
+<h3>Step 1: Check Upper Layer</h3>
+<p>If file exists → return it</p>
+<h3>Step 2: Check Lower Layers (top to bottom)</h3>
+<p>If found → return it</p>
+<h3>Step 3: Not found → file does not exist</h3>
+<hr>
+<h2>What happens on modification?</h2>
+<p>This is where OverlayFS becomes powerful.</p>
+<h3>Scenario: file exists in lower layer</h3>
+<p>If you modify it:</p>
+<ol>
+<li>File is copied to upper layer</li>
+<li>Modification happens on the copied file</li>
+<li>Original lower layer remains unchanged</li>
+</ol>
+<p>This is called:</p>
+<em><strong>Copy-on-write (CoW)</strong></em><p><strong>Answers question 2:</strong> modifying a file you see in the merged view never touches the lower layer. It only touches the copy in the upper layer.</p>
+<hr>
+<h2>What happens when you create a new file?</h2>
+<p>New files always go to the <strong>upper writable layer</strong>.</p>
+<hr>
+<h1>Why OverlayFS matters for Docker</h1>
+<p>Docker images are built using <strong>layers</strong>.</p>
+<p>Each instruction in a Dockerfile adds an entry to the image, but not every instruction writes new files to disk. There are two kinds:</p>
+<p><strong>Instructions that create a layer with real file content:</strong></p>
+<ul>
+<li><code>RUN</code> – runs a command and saves the file changes it makes</li>
+<li><code>COPY</code> – copies files from your build context into the image</li>
+<li><code>ADD</code> – like <code>COPY</code>, but can also extract <code>.tar</code> archives and fetch from a URL</li>
+</ul>
+<p><strong>Instructions that only add metadata (empty layer, 0 bytes):</strong></p>
+<ul>
+<li><code>ENV</code> – sets an environment variable</li>
+<li><code>LABEL</code> – adds metadata, like a tag</li>
+<li><code>CMD</code> – sets the default command for the container</li>
+<li><code>ENTRYPOINT</code> – sets the command that always runs</li>
+<li><code>EXPOSE</code> – documents which port the container listens on</li>
+<li><code>WORKDIR</code> – sets the working directory</li>
+<li><code>USER</code> – sets which user runs the next instructions</li>
+<li><code>ARG</code> – defines a build-time variable</li>
+</ul>
+<p>So yes, every instruction shows up in the image’s history. But only <code>RUN</code>, <code>COPY</code>, and <code>ADD</code> actually change the filesystem and create a layer with real content. The rest just attach information to the image.</p>
+<p>You can check this yourself:</p>
+<pre>docker history <image-name></pre><p>Layers that come from metadata-only instructions will show <code>0B</code> as their size.</p>
+<p>Example Dockerfile:</p>
+<pre>FROM ubuntu
+RUN apt-get update
+RUN apt-get install nginx
+COPY app /app</pre><p>Here, <code>FROM</code> brings in the base image layers, and each <code>RUN</code> and the <code>COPY</code> create one new content layer, then four content layers in total.</p>
+<p>When you run a container:</p>
+<ul>
+<li>Docker stacks all image layers (lower layers)</li>
+<li>Adds a writable upper layer</li>
+<li>Uses OverlayFS to merge them</li>
+</ul>
+<hr>
+<h1>WSL connection</h1>
+<p>WSL (especially WSL2) provides a <strong>real Linux kernel environment</strong> on Windows.</p>
+<p>This enables:</p>
+<ul>
+<li>Linux namespaces</li>
+<li>cgroups</li>
+<li>OverlayFS support</li>
+</ul>
+<p>So OverlayFS is part of the Linux kernel features used inside WSL. This is also why Docker Desktop’s WSL2 backend can run real Linux containers on Windows without a separate full virtual machine.</p>
+<hr>
+<h1>In Practice (hands-on idea)</h1>
+<p>Let’s create a simple structure:</p>
+<pre>mkdir ofs
+cd ofs
+
+mkdir lower1 lower2 upper work merged</pre><p>Note the <code>work</code> directory, this is the <code>workdir</code> I talked about above. It’s easy to forget, but the mount will fail without it.</p>
+<p>Create files:</p>
+<pre>echo "A" > lower1/A.txt
+echo "C1" > lower1/C.txt
+
+echo "B" > lower2/B.txt
+echo "C2" > lower2/C.txt</pre><p>Now mount OverlayFS:</p>
+<pre>sudo mount -t overlay overlay \
+  -o lowerdir=lower1:lower2,upperdir=upper,workdir=work \
+  merged</pre><p>Now inspect:</p>
+<pre>ls merged</pre><p>You should see:</p>
+<pre>A.txt
+B.txt
+C.txt</pre><p>Here is what just happened, mapped to our actual files:</p>
+<pre>lower1 (top priority)     lower2 (bottom)         upper (empty so far)
+├── A.txt                 ├── B.txt
+└── C.txt  ─┐             └── C.txt  ─┐           (nothing written yet)
+            │  shadowed,  ┘            │
+            │  lower1 wins
+            ▼
+      ┌─────────────────────────────────────┐
+      │              merged                  │
+      │  A.txt   ← from lower1               │
+      │  B.txt   ← from lower2               │
+      │  C.txt   ← from lower1 (wins,        │
+      │            because it's listed first) │
+      └─────────────────────────────────────┘</pre><p><code>lower2/C.txt</code> still exists on disk. it’s just hidden behind <code>lower1/C.txt</code> in the merged view, because <code>lower1</code> was listed first in <code>lowerdir=lower1:lower2</code>.</p>
+<hr>
+<h2>Test copy-on-write</h2>
+<pre>echo "modified" > merged/A.txt</pre><p>Now check:</p>
+<ul>
+<li><code>upper/A.txt</code> → exists (copied + modified)</li>
+<li><code>lower1/A.txt</code> → unchanged</li>
+</ul>
+<hr>
+<h1>Docker connection</h1>
+<p>You can inspect this same behavior in Docker, with a real image.</p>
+<h3>Step 1: pull and run an image</h3>
+<pre>docker pull nginx:latest
+docker run -d --name overlay-demo nginx:latest</pre><h3>Step 2: inspect the GraphDriver</h3>
+<pre>docker inspect overlay-demo --format '{{json .GraphDriver}}'</pre><p>You will get something like this  (your IDs will be different from these samples):</p>
+<pre>{
+  "Data": {
+    "LowerDir": "/var/lib/docker/overlay2/abc123-init/diff:/var/lib/docker/overlay2/def456/diff",
+    "MergedDir": "/var/lib/docker/overlay2/abc123/merged",
+    "UpperDir": "/var/lib/docker/overlay2/abc123/diff",
+    "WorkDir": "/var/lib/docker/overlay2/abc123/work"
+  },
+  "Name": "overlay2"
+}</pre><p>Notice the pattern matches exactly what I just did by hand:</p>
+<ul>
+<li><code>LowerDir</code> has multiple paths joined with <code>:</code> , one per image layer</li>
+<li><code>UpperDir</code> is the container’s own writable layer</li>
+<li><code>MergedDir</code> is what the container actually sees as its root filesystem</li>
+<li><code>WorkDir</code> is the kernel scratch space I mentioned earlier</li>
+</ul>
+<h3>Step 3: open the directories and compare</h3>
+<pre>sudo ls /var/lib/docker/overlay2/<lower-id>/diff
+sudo ls /var/lib/docker/overlay2/<upper-id>/diff</pre><p>Right after <code>docker run</code>, <code>UpperDir</code> will be almost empty the container hasn’t changed anything yet.</p>
+<h3>Step 4: trigger copy-on-write live</h3>
+<pre>docker exec overlay-demo sh -c "echo hello > /usr/share/nginx/html/test.txt"
+sudo cat /var/lib/docker/overlay2/<upper-id>/diff/usr/share/nginx/html/test.txt</pre><p>The new file appears inside <code>UpperDir</code>, not in any lower layer exactly the same behavior you saw with <code>merged/A.txt</code> in the manual example.</p>
+<hr>
+<h1>Key Takeaway</h1>
+<em>OverlayFS gives containers the illusion of a complete, writable filesystem while actually using immutable layers + a writable delta layer</em><p>This is one of the core reasons Docker is fast and efficient.</p>
+
+</body>
+</html>
