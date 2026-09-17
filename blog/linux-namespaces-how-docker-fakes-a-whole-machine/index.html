@@ -1,0 +1,163 @@
+<!DOCTYPE html><html lang="en" class="h-full" data-theme="light"> <head><meta charset="UTF-8"><meta name="description" content="Astro description"><meta name="viewport" content="width=device-width"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="sitemap" href="/sitemap-index.xml"><meta name="generator" content="Astro v6.4.6"><title>Linux Namespaces: How Docker Fakes a Whole Machine </title><!-- initialize theme --><script>
+			const themeSaved = localStorage.getItem("theme");
+
+			if (themeSaved) {
+				document.documentElement.dataset.theme = themeSaved;
+			} else {
+				const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+				document.documentElement.dataset.theme = prefersDark ? "dark" : "light";
+			}
+
+			window
+				.matchMedia("(prefers-color-scheme: dark)")
+				.addEventListener("change", (event) => {
+					if (!localStorage.getItem("theme")) {
+						document.documentElement.dataset.theme = event.matches
+							? "dark"
+							: "light";
+					}
+				});
+		</script><style>.progress-bar[data-astro-cid-4sn4zg3r]{position:fixed;top:0;left:0;height:2px;width:0%;background:var(--color-primary);z-index:1000;transition:width .1s linear}.post-article[data-astro-cid-4sn4zg3r]{padding-bottom:4rem}.post-header[data-astro-cid-4sn4zg3r]{padding:2.5rem 0 2rem;border-bottom:1px solid var(--color-border);margin-bottom:0}.post-meta-top[data-astro-cid-4sn4zg3r]{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem}.post-title[data-astro-cid-4sn4zg3r]{font-size:clamp(1.75rem,4vw,2.5rem);font-weight:700;line-height:1.2;letter-spacing:-.02em;color:var(--color-text);margin-bottom:.875rem}.post-desc[data-astro-cid-4sn4zg3r]{font-size:1.0625rem;color:var(--color-text-offset);line-height:1.65;margin-bottom:1rem}.post-byline[data-astro-cid-4sn4zg3r]{font-size:13px;color:var(--color-text-offset)}.meta-line[data-astro-cid-4sn4zg3r]{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}.meta-dot[data-astro-cid-4sn4zg3r]{color:var(--color-border)}.post-cover[data-astro-cid-4sn4zg3r]{padding:1.75rem 0 0}.cover-img[data-astro-cid-4sn4zg3r]{width:100%;border-radius:14px;aspect-ratio:16/8;object-fit:cover}.post-footer[data-astro-cid-4sn4zg3r]{border-top:1px solid var(--color-border);padding-top:1.5rem;margin-top:2rem;display:flex;flex-direction:column;gap:.875rem}.tags-label[data-astro-cid-4sn4zg3r]{font-size:12px;color:var(--color-text-offset)}.tags-list[data-astro-cid-4sn4zg3r]{display:flex;gap:6px;flex-wrap:wrap}.back-link[data-astro-cid-4sn4zg3r]{font-size:13px;font-weight:500;color:var(--color-text-offset);transition:color .15s}.back-link[data-astro-cid-4sn4zg3r]:hover{color:var(--color-text)}.badge-cat[data-astro-cid-4sn4zg3r],.badge-tag[data-astro-cid-4sn4zg3r]{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:2px 9px;border-radius:100px;text-decoration:none;transition:opacity .15s;white-space:nowrap}.badge-type[data-astro-cid-4sn4zg3r]{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:2px 9px;border-radius:100px;white-space:nowrap;background:color-mix(in srgb,var(--color-secondary) 14%,var(--color-background));color:var(--color-text);border:1px solid color-mix(in srgb,var(--color-secondary) 24%,var(--color-border))}.badge-cat[data-astro-cid-4sn4zg3r]:hover,.badge-tag[data-astro-cid-4sn4zg3r]:hover{opacity:.75}.badge-cat[data-astro-cid-4sn4zg3r]{background:var(--color-primary);color:#fff}.badge-tag[data-astro-cid-4sn4zg3r]{background:color-mix(in srgb,var(--color-text) 8%,var(--color-background));color:var(--color-text-offset);border:1px solid var(--color-border)}
+</style>
+<link rel="stylesheet" href="/_astro/Layout.Cb_E7w53.css"></head> <body class="h-full flex flex-col overflow-x-hidden bg-default
+		text-default text-base selection:bg-secondary"> <header class="bg-background py-4"> <div class="container max-w-6xl mx-auto flex justify-between items-center px-4 md:px-8"> <!-- Logo --> <div class="text-2xl font-bold"> <a href="/" class="hover:text-offset">Calligra.dev</a> </div> <div class="flex gap-5"> <!-- PC Menu --> <nav class="hidden sm:flex space-x-6 items-center"> <a href="/" class="hover:text-offset">About</a><a href="/blog" class="hover:text-offset">Blog</a> </nav> <!-- Mobile Menu Button --> <div class="sm:hidden flex"> <button id="menu-btn" class="focus:outline-none" aria-label="Mobile open menu"> <svg width="1em" height="1em" class="size-6" data-icon="Menu">   <symbol id="ai:local:Menu" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"/></symbol><use href="#ai:local:Menu"></use>  </svg> </button> </div> <button id="toggle-theme-button" aria-label="Toggle dark mode" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border bg-background
+        text-text shadow-sm hover:bg-background-offset focus:outline-none focus:bg-background-offset"> <div id="icon-theme-light"> <svg width="1em" height="1em" id="toggle-theme-icon" data-icon="Sun">   <symbol id="ai:local:Sun" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0"/></symbol><use href="#ai:local:Sun"></use>  </svg> </div> <div id="icon-theme-dark"> <svg width="1em" height="1em" id="toggle-theme-icon" data-icon="Moon">   <symbol id="ai:local:Moon" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21.752 15.002A9.7 9.7 0 0 1 18 15.75 9.75 9.75 0 0 1 8.25 6c0-1.33.266-2.597.748-3.752A9.75 9.75 0 0 0 3 11.25 9.75 9.75 0 0 0 12.75 21a9.75 9.75 0 0 0 9.002-5.998"/></symbol><use href="#ai:local:Moon"></use>  </svg> </div> </button> <script type="module" src="/_astro/ThemeToggle.astro_astro_type_script_index_0_lang.DOkNsOIp.js"></script> </div> </div> <!-- Mobile Menu --> <div id="mobile-menu" class="hidden sm:hidden"> <a href="/" class="block px-4 py-2 hover:bg-background-offset"> About </a><a href="/blog" class="block px-4 py-2 hover:bg-background-offset"> Blog </a> </div> </header> <script type="module">const e=document.getElementById("menu-btn"),n=document.getElementById("mobile-menu");e?.addEventListener("click",()=>{n?.classList.toggle("hidden")});</script> <section class="flex-grow">   <div class="progress-bar" id="progress" aria-hidden="true" data-astro-cid-4sn4zg3r></div> <article class="post-article" data-astro-cid-4sn4zg3r> <!-- Header --> <header class="post-header" data-astro-cid-4sn4zg3r> <div class="container mx-auto max-w-3xl px-4 md:px-8" data-astro-cid-4sn4zg3r> <div class="post-meta-top" data-astro-cid-4sn4zg3r> <span class="badge-type" data-astro-cid-4sn4zg3r>Deep Dive</span> <a href="/blog/category/devops" class="badge-cat" data-astro-cid-4sn4zg3r> DevOps </a> <a href="/blog/tag/docker" class="badge-tag" data-astro-cid-4sn4zg3r>#docker</a><a href="/blog/tag/linux" class="badge-tag" data-astro-cid-4sn4zg3r>#linux</a><a href="/blog/tag/namespaces" class="badge-tag" data-astro-cid-4sn4zg3r>#namespaces</a><a href="/blog/tag/kernel" class="badge-tag" data-astro-cid-4sn4zg3r>#kernel</a><a href="/blog/tag/containers" class="badge-tag" data-astro-cid-4sn4zg3r>#containers</a><a href="/blog/tag/unshare" class="badge-tag" data-astro-cid-4sn4zg3r>#unshare</a> </div> <h1 class="post-title" data-astro-cid-4sn4zg3r>Linux Namespaces: How Docker Fakes a Whole Machine </h1> <p class="post-desc" data-astro-cid-4sn4zg3r></p> <div class="post-byline" data-astro-cid-4sn4zg3r> <div class="meta-line" data-astro-cid-4sn4zg3r> <time datetime="2026-09-17T21:27:49.343Z" data-astro-cid-4sn4zg3r>September 17, 2026</time> <span class="meta-dot" aria-hidden="true" data-astro-cid-4sn4zg3r>•</span> <span data-astro-cid-4sn4zg3r>5 min read</span> <span class="meta-dot" aria-hidden="true" data-astro-cid-4sn4zg3r>•</span> <span data-astro-cid-4sn4zg3r>Intermediate</span> </div> </div> </div> </header> <!-- Cover image --> <div class="post-cover" data-astro-cid-4sn4zg3r> <div class="container mx-auto max-w-4xl px-4 md:px-8" data-astro-cid-4sn4zg3r> <img src="/images/blog/linux-namespaces-how-docker-fakes-a-whole-machine/cover.png" alt="Linux Namespaces: How Docker Fakes a Whole Machine " class="cover-img" loading="eager" data-astro-cid-4sn4zg3r> </div> </div> <!-- Content --> <div class="container mx-auto max-w-3xl px-4 md:px-8" data-astro-cid-4sn4zg3r> <div id="markdown" class="prose prose-lg overflow-visible relative my-8 max-w-none" data-astro-cid-4sn4zg3r> <p>This time i decided to start with Kernel namespaces. TBH, i enjoy low level systems but by hands of GOD, i’m backend engineer now and working on high level systems. so writing things about low level is just a hobby!</p>
+<p>While <code>cgroups</code> (control groups) are mandatory for resource management (limiting CPU/RAM), they are “invisible” to the containerized process. <strong>Namespaces</strong>, on the other hand, are what make the container actually feel like a separate system to the process running inside it. this is why I’m continuing with Namespaces first.</p>
+<p>Galaxy far far away we heard much about VMs which they made isolation for our applications. each apps needs a new Operating systems and need to install bunch of applications and overheads. but suddenly Containers comes out of the blue and shown their ability to isolation without needed extra operating system. many containers there, faster and much lower overheads. things got better and better. but this time is not a real isolation. is illusion of isolation that also brings pros and cons. i will talk about it later.</p>
+<p>in previous topic i talked about the overlayFS which was (disk) and Namespaces are environment.</p>
+<p>Why Namespaces are used plural and not just a namespace? because we have many type of them and for each isolation (containerizing) may use some of them. 7 types of Namespaces will discussed that used by docker to make container illusion 👻</p>
+<h3 id="what-are-namespaces">What are Namespaces?</h3>
+<p>Namespaces are a Linux kernel feature that let different groups of processes see different versions of the same system resource. For example, one group of processes (like the ones inside a Docker container) can have its own private list of process IDs, its own network setup, and its own hostname. they are completely separate from another group of processes running on the same machine.</p>
+<h3 id="what-are-the-process-and-set-of-the-them">What are the process and set of the them?!</h3>
+<p>A <strong>process</strong> is just a running program. Every time you start something <code>nginx</code>, <code>php</code>, <code>bash</code> a Docker container. the kernel creates a process for it. Each process has its own memory, its own list of open files, and so on.</p>
+<p>A <strong>“set of processes”</strong> just means “a group of processes.” For example:</p>
+<ul>
+<li>All the processes running inside Container A = one set</li>
+<li>All the processes running inside Container B = another set</li>
+<li>All the processes running directly on your host machine = another set</li>
+</ul>
+<h3 id="what-are-kernel-resources">What are “kernel resources”?</h3>
+<p>The Linux kernel manages many things that processes need to work with. These things are the “resources.”</p>
+<p>Some examples:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Resource</th><th>What it means</th></tr></thead><tbody><tr><td><strong>Process IDs (PIDs)</strong></td><td>The numbers used to identify each process</td></tr><tr><td><strong>Network interfaces</strong></td><td>IP addresses, ports, routing tables</td></tr><tr><td><strong>Mount points</strong></td><td>Which filesystems are mounted where (like <code>/</code>, <code>/home</code>, <code>/proc</code>)</td></tr><tr><td><strong>Hostname</strong></td><td>The machine’s name</td></tr><tr><td><strong>User/group IDs</strong></td><td>Who “root” is, which users exist</td></tr><tr><td><strong>Inter-process communication (IPC)</strong></td><td>Shared memory, message queues between processes</td></tr></tbody></table>
+<p><img src="/images/blog/linux-namespaces-how-docker-fakes-a-whole-machine/asset-1.png" alt="Blog Asset"/></p>
+<p>There is 8th Kernel namespace <strong>time</strong>, which lets a container have its own view of <code>CLOCK_MONOTONIC</code>/<code>CLOCK_BOOTTIME</code>. Docker doesn’t use it by default.</p>
+<h2 id="lets-create-a-new-namespace">Let’s create a new Namespace</h2>
+<p>Creating a new namespace to run your app inside it is really easy. just one command with the right flags to go! Linux gives us the <code>unshare</code> command for exactly this.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">sudo</span><span style="color:#9ECBFF"> unshare</span><span style="color:#79B8FF"> --uts</span><span style="color:#79B8FF"> --pid</span><span style="color:#79B8FF"> --mount</span><span style="color:#79B8FF"> --fork</span><span style="color:#9ECBFF"> bash</span></span></code></pre>
+<p>What just happened:</p>
+<ul>
+<li><code>-uts</code>  new UTS namespace (isolated hostname)</li>
+<li><code>-pid</code>  new PID namespace (isolated process tree)</li>
+<li><code>-mount</code>  new mount namespace (isolated filesystem mounts)</li>
+<li><code>-fork</code>  forks a new process before running the command, which is required when using <code>-pid</code> (the shell itself can’t become PID 1 in the new namespace without forking)</li>
+</ul>
+<p>You’re now inside a shell running in three brand-new namespaces. Try this:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">hostname</span><span style="color:#9ECBFF"> container1</span></span>
+<span class="line"><span style="color:#B392F0">hostname</span></span>
+<span class="line"><span style="color:#6A737D"># container1</span></span></code></pre>
+<p>Open a second terminal on the host and run <code>hostname</code> there. it still shows the original hostname. The change only exists inside your new UTS namespace. That’s the whole trick: same kernel, same machine, but a different view of the system depending on which namespace a process belongs to.</p>
+<p>Now check the process tree from inside:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">ps</span><span style="color:#9ECBFF"> aux</span></span></code></pre>
+<p>You’ll see a tiny process list because this is a fresh PID namespace, and your <code>bash</code> is PID 1 in it, even though on the host it has some completely different PID.</p>
+<p>You can confirm which namespaces a process belongs to by looking at <code>/proc/&lt;pid&gt;/ns/</code>:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">ls</span><span style="color:#79B8FF"> -l</span><span style="color:#9ECBFF"> /proc/</span><span style="color:#79B8FF">$$</span><span style="color:#9ECBFF">/ns</span></span></code></pre>
+<p>Each entry is a symlink like <code>uts:[4026532345]</code> that number is the namespace ID. Two processes sharing the same ID are in the same namespace; different IDs mean they’re isolated from each other, even if they’re running on the same physical machine at the same moment.</p>
+<p>This is exactly what Docker does under the hood when it starts a container. just with more namespace types combined at once (<code>net</code>, <code>ipc</code>, <code>cgroup</code>, and optionally <code>user</code>), plus OverlayFS for the filesystem layer you already covered.</p>
+<p>Now let’s create a namespace for each kernel namespace we know, and at the end put them all together!</p>
+<h3 id="1-uts-namespace--hostname-">1. UTS namespace ( hostname )</h3>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">sudo</span><span style="color:#9ECBFF"> unshare</span><span style="color:#79B8FF"> --uts</span><span style="color:#79B8FF"> --fork</span><span style="color:#9ECBFF"> bash</span></span>
+<span class="line"><span style="color:#B392F0">hostname</span><span style="color:#9ECBFF"> container-uts</span></span>
+<span class="line"><span style="color:#B392F0">hostname</span></span>
+<span class="line"><span style="color:#6A737D"># container-uts</span></span></code></pre>
+<p>Open a second terminal on the host and run <code>hostname</code>. it still shows the original name. Only the process inside the new UTS namespace sees the change.</p>
+<h3 id="2-pid-namespace--process-tree-">2. PID namespace ( process tree )</h3>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">sudo</span><span style="color:#9ECBFF"> unshare</span><span style="color:#79B8FF"> --pid</span><span style="color:#79B8FF"> --fork</span><span style="color:#79B8FF"> --mount-proc</span><span style="color:#9ECBFF"> bash</span></span>
+<span class="line"><span style="color:#79B8FF">echo</span><span style="color:#79B8FF"> $$</span></span></code></pre>
+<p>Note: <code>--mount-proc</code> is important. Without it, <code>ps</code> still reads the host’s <code>/proc</code>, so you’d see the host’s full process list even though your PIDs are technically isolated. <code>--mount-proc</code> remounts <code>/proc</code> for the new namespace so <code>ps</code> shows only what’s actually inside it.</p>
+<h3 id="3-mount-namespace-filesystem-mounts">3. Mount namespace (filesystem mounts)</h3>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">sudo</span><span style="color:#9ECBFF"> unshare</span><span style="color:#79B8FF"> --mount</span><span style="color:#9ECBFF"> bash</span></span>
+<span class="line"><span style="color:#B392F0">mkdir</span><span style="color:#79B8FF"> -p</span><span style="color:#9ECBFF"> /tmp/myns</span></span>
+<span class="line"><span style="color:#B392F0">mount</span><span style="color:#79B8FF"> -t</span><span style="color:#9ECBFF"> tmpfs</span><span style="color:#9ECBFF"> tmpfs</span><span style="color:#9ECBFF"> /tmp/myns</span></span>
+<span class="line"><span style="color:#B392F0">mount</span><span style="color:#F97583"> |</span><span style="color:#B392F0"> grep</span><span style="color:#9ECBFF"> myns</span></span></code></pre>
+<p>Check <code>mount | grep myns</code> in a host terminal and nothing there. The mount only exists inside this namespace.</p>
+<h3 id="4-network-namespace-network-stack">4. Network namespace (network stack)</h3>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">sudo</span><span style="color:#9ECBFF"> unshare</span><span style="color:#79B8FF"> --net</span><span style="color:#9ECBFF"> bash</span></span>
+<span class="line"><span style="color:#B392F0">ip</span><span style="color:#9ECBFF"> addr</span></span></code></pre>
+<p>A brand new net namespace starts with zero interfaces except a loopback that isn’t even up yet. no eth0, no routes, nothing inherited from the host. This is why Docker has to wire up a <strong>veth</strong> pair to give a container real connectivity.</p>
+<h3 id="5-ipc-namespace-shared-memory--message-queues">5. IPC namespace (shared memory / message queues)</h3>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">sudo</span><span style="color:#9ECBFF"> unshare</span><span style="color:#79B8FF"> --ipc</span><span style="color:#9ECBFF"> bash</span></span>
+<span class="line"><span style="color:#B392F0">ipcs</span><span style="color:#79B8FF"> -m</span></span></code></pre>
+<p>Compare with <code>ipcs -m</code> on the host. Any shared memory segment created inside this namespace is invisible outside it, and vice versa. two processes can’t accidentally step on each other’s shared memory just because they’re on the same machine.</p>
+<h3 id="6-user-namespace-uidgid-mapping">6. User namespace (UID/GID mapping)</h3>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">unshare</span><span style="color:#79B8FF"> --user</span><span style="color:#79B8FF"> --map-root-user</span><span style="color:#9ECBFF"> bash</span><span style="color:#79B8FF"> -c</span><span style="color:#9ECBFF"> whoami</span></span></code></pre>
+<p>No <code>sudo</code> needed for this one. Inside, you’re “root” (UID 0), but check <code>id</code> from the host side (e.g. <code>cat /proc/&lt;pid&gt;/status | grep Uid</code>)  you’re still your normal unprivileged UID there. This is the mapping trick rootless containers rely on.</p>
+<h3 id="7-cgroup-namespace-view-of-the-cgroup-hierarchy">7. Cgroup namespace (view of the cgroup hierarchy)</h3>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">sudo</span><span style="color:#9ECBFF"> unshare</span><span style="color:#79B8FF"> --cgroup</span><span style="color:#79B8FF"> --fork</span><span style="color:#9ECBFF"> bash</span></span>
+<span class="line"><span style="color:#B392F0">cat</span><span style="color:#9ECBFF"> /proc/self/cgroup</span></span></code></pre>
+<p>This one doesn’t limit resources (that’s cgroups themselves, next post). it just changes what a process <em>sees</em> as its cgroup root, so it can’t see or navigate to sibling/parent cgroups on the host.</p>
+<h3 id="putting-it-all-together">Putting it all together</h3>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">sudo</span><span style="color:#9ECBFF"> unshare</span><span style="color:#79B8FF"> --uts</span><span style="color:#79B8FF"> --pid</span><span style="color:#79B8FF"> --mount</span><span style="color:#79B8FF"> --net</span><span style="color:#79B8FF"> --ipc</span><span style="color:#79B8FF"> --cgroup</span><span style="color:#79B8FF"> --fork</span><span style="color:#79B8FF"> --mount-proc</span><span style="color:#9ECBFF"> bash</span></span></code></pre>
+<p>That’s six namespaces created at once for this one shell (<code>user</code> isn’t included here. see the note below). Now let’s poke around and confirm each one actually took effect:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">hostname</span><span style="color:#9ECBFF"> container1</span></span>
+<span class="line"><span style="color:#B392F0">hostname</span></span>
+<span class="line"><span style="color:#6A737D"># container1</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#79B8FF">echo</span><span style="color:#79B8FF"> $$</span></span>
+<span class="line"><span style="color:#6A737D"># 1</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">ip</span><span style="color:#9ECBFF"> addr</span></span>
+<span class="line"><span style="color:#6A737D"># only &quot;lo&quot;, DOWN</span></span>
+<span class="line"><span style="color:#B392F0">ip</span><span style="color:#9ECBFF"> link</span><span style="color:#9ECBFF"> set</span><span style="color:#9ECBFF"> lo</span><span style="color:#9ECBFF"> up</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">ps</span><span style="color:#9ECBFF"> aux</span></span>
+<span class="line"><span style="color:#6A737D"># tiny process list, just your shell and its children</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">ipcs</span><span style="color:#79B8FF"> -m</span></span>
+<span class="line"><span style="color:#6A737D"># empty fresh IPC namespace</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">cat</span><span style="color:#9ECBFF"> /proc/self/cgroup</span></span>
+<span class="line"><span style="color:#6A737D"># your own cgroup root, not the host&#39;s</span></span></code></pre>
+<p>Open a second terminal on the host and run the same commands, different hostname, full process list, real network interfaces, host’s cgroup path. Same kernel, same machine, two completely different <em>views</em> of the system.</p>
+<p>You can also confirm it from the outside: grab the PID of your namespace bash and compare namespace IDs:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">ls</span><span style="color:#79B8FF"> -l</span><span style="color:#9ECBFF"> /proc/</span><span style="color:#F97583">&lt;</span><span style="color:#9ECBFF">pi</span><span style="color:#E1E4E8">d</span><span style="color:#F97583">&gt;</span><span style="color:#9ECBFF">/ns</span></span></code></pre>
+<p>Every symlink (<code>uts</code>, <code>pid</code>, <code>mnt</code>, <code>net</code>, <code>ipc</code>, <code>cgroup</code>) will show a different number than the equivalent one for a host process that number is the namespace ID, and mismatched numbers mean isolation.</p>
+<p><strong>Note on</strong> <strong><code>user</code>****:</strong> it’s the trickiest one to combine because it changes what “privileged” even means for the rest of the command. Added on its own it’s usually paired with <code>--map-root-user</code> and run unprivileged, but stacking it with the others while running as root (via <code>sudo</code>) needs a bit more care around UID/GID mapping than fits cleanly here. Worth calling out as “the namespace we’re deliberately leaving for its own deeper dive” rather than squeezing it in.</p>
+<p>This six-namespace combo, plus OverlayFS for the filesystem (previous post) and cgroups for resource limits (next post), is basically the whole recipe Docker follows to make a container feel like its own machine.</p>
+<h2 id="the-end">The End</h2>
+<p>Now that readers know how to create an isolated environment (Namespaces), they will naturally ask: <em>“But what stops this process from consuming all the host’s memory?”</em></p>
+<p>Your answer will be in the next post on CGroups.</p> </div> <!-- Tags footer --> <footer class="post-footer" data-astro-cid-4sn4zg3r> <span class="tags-label" data-astro-cid-4sn4zg3r>Tagged in</span> <div class="tags-list" data-astro-cid-4sn4zg3r> <a href="/blog/tag/docker" class="badge-tag" data-astro-cid-4sn4zg3r>#docker</a><a href="/blog/tag/linux" class="badge-tag" data-astro-cid-4sn4zg3r>#linux</a><a href="/blog/tag/namespaces" class="badge-tag" data-astro-cid-4sn4zg3r>#namespaces</a><a href="/blog/tag/kernel" class="badge-tag" data-astro-cid-4sn4zg3r>#kernel</a><a href="/blog/tag/containers" class="badge-tag" data-astro-cid-4sn4zg3r>#containers</a><a href="/blog/tag/unshare" class="badge-tag" data-astro-cid-4sn4zg3r>#unshare</a> </div> <a href="/blog" class="back-link" data-astro-cid-4sn4zg3r>← Back to all posts</a> </footer> </div> </article> <script type="module" src="/_astro/_slug_.astro_astro_type_script_index_0_lang.DGjNpdug.js"></script>  </section> <footer class="site-footer" data-astro-cid-ch5ybykl> <div class="footer-inner container mx-auto max-w-6xl px-4 md:px-8" data-astro-cid-ch5ybykl> <p class="footer-copy" data-astro-cid-ch5ybykl>© 2026 Mohammad Ghalambaz. All Rights Reserved.</p> <nav class="footer-nav" aria-label="Footer navigation" data-astro-cid-ch5ybykl> <a href="/" class="footer-link" data-astro-cid-ch5ybykl>About</a><a href="/blog" class="footer-link" data-astro-cid-ch5ybykl>Blog</a> </nav> <div class="footer-socials" aria-label="Social links" data-astro-cid-ch5ybykl> <a href="https://github.com/ghalambaz" title="GitHub" target="_blank" rel="noopener noreferrer" class="footer-social-btn" aria-label="GitHub" data-astro-cid-ch5ybykl> <span aria-hidden="true" data-astro-cid-ch5ybykl><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg></span> </a><a href="https://www.linkedin.com/in/ghalambaz" title="LinkedIn" target="_blank" rel="noopener noreferrer" class="footer-social-btn" aria-label="LinkedIn" data-astro-cid-ch5ybykl> <span aria-hidden="true" data-astro-cid-ch5ybykl><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg></span> </a><a href="https://dev.to/ghalambaz" title="dev.to" target="_blank" rel="noopener noreferrer" class="footer-social-btn" aria-label="dev.to" data-astro-cid-ch5ybykl> <span aria-hidden="true" data-astro-cid-ch5ybykl><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M7.42 10.05c-.18-.16-.46-.23-.84-.23H6l.02 2.44.04 2.45.56-.02c.41 0 .63-.07.83-.26.24-.24.26-.36.26-2.2 0-1.91-.02-1.96-.29-2.18zM0 4.94v14.12h24V4.94H0zM8.56 15.3c-.44.58-1.06.77-2.53.77H4.71V8.53h1.4c1.67 0 2.16.18 2.6.9.27.43.29.6.32 2.57.05 2.23-.02 2.73-.47 3.3zm5.09-5.47h-2.47v1.77h1.52v1.28l-.72.04-.75.03v1.77l1.22.03 1.2.04v1.28h-1.6c-1.53 0-1.6-.01-1.87-.3l-.3-.28v-3.16c0-3.02.01-3.18.25-3.48.23-.31.25-.31 1.88-.31h1.64v1.29zm4.68 5.45c-.17.43-.64.79-1 .79-.18 0-.45-.15-.67-.39-.32-.32-.45-.63-.82-2.08l-.9-3.39-.45-1.67h.76c.4 0 .75.02.75.05 0 .06 1.16 4.54 1.26 4.83.04.15.32-.7.73-2.3l.66-2.52.74-.04c.4-.02.73 0 .73.04 0 .14-1.67 6.38-1.8 6.68z"/></svg></span> </a><a href="https://hashnode.com/@ghalambaz" title="Hashnode" target="_blank" rel="noopener noreferrer" class="footer-social-btn" aria-label="Hashnode" data-astro-cid-ch5ybykl> <span aria-hidden="true" data-astro-cid-ch5ybykl><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M22.351 8.019l-6.37-6.37a5.63 5.63 0 0 0-7.962 0l-6.37 6.37a5.63 5.63 0 0 0 0 7.962l6.37 6.37a5.63 5.63 0 0 0 7.962 0l6.37-6.37a5.63 5.63 0 0 0 0-7.962zM12 15.953a3.953 3.953 0 1 1 0-7.906 3.953 3.953 0 0 1 0 7.906z"/></svg></span> </a><a href="https://medium.com/@calligra" title="Medium" target="_blank" rel="noopener noreferrer" class="footer-social-btn" aria-label="Medium" data-astro-cid-ch5ybykl> <span aria-hidden="true" data-astro-cid-ch5ybykl><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M13.54 12a6.8 6.8 0 0 1-6.77 6.82A6.8 6.8 0 0 1 0 12a6.8 6.8 0 0 1 6.77-6.82A6.8 6.8 0 0 1 13.54 12zM20.96 12c0 3.54-1.51 6.42-3.38 6.42-1.87 0-3.39-2.88-3.39-6.42s1.52-6.42 3.39-6.42 3.38 2.88 3.38 6.42M24 12c0 3.17-.53 5.75-1.19 5.75-.66 0-1.19-2.58-1.19-5.75s.53-5.75 1.19-5.75C23.47 6.25 24 8.83 24 12z"/></svg></span> </a> </div> </div> </footer> </body></html>
