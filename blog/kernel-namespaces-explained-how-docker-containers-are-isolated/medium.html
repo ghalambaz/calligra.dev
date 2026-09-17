@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Kernel Namespaces Explained: How Docker Containers are isolated</title>
+  <!--
+    MEDIUM PUBLISH INSTRUCTIONS
+    ══════════════════════════════════════════════════════
+    1. Open this file in your browser (File > Open, or drag it in).
+    2. Press Ctrl+A (Cmd+A on Mac) to select everything, then Ctrl+C to copy.
+    3. Go to medium.com → Write a story → click into the editor → Ctrl+V to paste.
+    4. After pasting, set:
+       • Title: Kernel Namespaces Explained: How Docker Containers are isolated
+       • Subtitle / description: 
+       • Tags (up to 5): 
+    5. Before publishing → "..." menu → "Change display title/subtitle"
+    6. Set "Originally published at": https://calligra.dev/blog/kernel-namespaces-explained-how-docker-containers-are-isolated
+    7. Cover image: No cover — upload manually via the Medium cover tool.
+    ══════════════════════════════════════════════════════
+  -->
+  <style>
+    /*
+     * These styles only affect local preview in your browser.
+     * Medium strips all CSS when you paste — that's expected.
+     */
+    body        { font-family: Georgia, serif; max-width: 740px; margin: 40px auto; line-height: 1.75; color: #292929; }
+    h1          { font-size: 2rem; font-weight: 700; margin-bottom: 0.25em; }
+    h2          { font-size: 1.5rem; font-weight: 700; margin-top: 2em; }
+    h3          { font-size: 1.2rem; font-weight: 600; margin-top: 1.5em; }
+    p           { margin: 1em 0; }
+    pre         { background: #f4f4f4; padding: 1em; border-radius: 4px; overflow-x: auto; }
+    code        { font-family: monospace; font-size: 0.9em; }
+    blockquote  { border-left: 3px solid #ccc; margin: 1em 0; padding-left: 1em; color: #555; }
+    img         { max-width: 100%; height: auto; display: block; margin: 1.5em 0; }
+    a           { color: #1a8917; }
+  </style>
+</head>
+<body>
+  <h1>Kernel Namespaces Explained: How Docker Containers are isolated</h1>
+<p>We have still way more to go …</p>
+<p>this time i decided to start with Kernel namespaces. TBH, i enjoy low level systems but by hands of GOD, i’m backend engineer now.</p>
+<p>While <code>cgroups</code> (control groups) are mandatory for resource management (limiting CPU/RAM), they are &quot;invisible&quot; to the containerized process. <strong>Namespaces</strong>, on the other hand, are what make the container actually <em>feel</em> like a separate system to the process running inside it. this is why I’m continuing with Namespaces first.</p>
+<p>Galaxy far far away we heard much about VMs which they made isolation for our applications. each apps needs a new Operating systems and bunch of overheads. but suddenly Containers comes out of the blue and shown their ability to isolation without needed extra operating system. many containers there, faster and much lower overheads. things got better and better. but this time is not a real isolation. is illusion of isolation that also brings pros and cons. i will talk about it later.</p>
+<p>in previous topic i talked about the overlayFS which was (disk) and Namespaces are environment.</p>
+<p>Why Namespaces are used plural and not just a namespace? because we have many type of them and for each isolation (containerizing) may use some of them. 7 types of Namespaces will discussed that used by docker to make container illusion  👻</p>
+<h3>What are Namespaces?</h3>
+<p>Namespaces are a Linux kernel feature that let different groups of processes see different versions of the same system resource. For example, one group of processes (like the ones inside a Docker container) can have its own private list of process IDs, its own network setup, and its own hostname — completely separate from another group of processes running on the same machine.</p>
+<h3>What are the process and set of the them?!</h3>
+<p>A <strong>process</strong> is just a running program. Every time you start something <code>nginx</code>, <code>php</code>, <code>bash</code> a Docker container.  the kernel creates a process for it. Each process has its own memory, its own list of open files, and so on.</p>
+<p>A <strong>&quot;set of processes&quot;</strong> just means &quot;a group of processes.&quot; For example:</p>
+<ul>
+<li>All the processes running inside Container A = one set</li>
+<li>All the processes running inside Container B = another set</li>
+<li>All the processes running directly on your host machine = another set</li>
+</ul>
+<h3>What are &quot;kernel resources&quot;?</h3>
+<p>The Linux kernel manages many things that processes need to work with. These things are the &quot;resources.&quot; </p>
+<p>Some examples:</p>
+<table>
+<thead>
+<tr>
+<th>Resource</th>
+<th>What it means</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Process IDs (PIDs)</strong></td>
+<td>The numbers used to identify each process</td>
+</tr>
+<tr>
+<td><strong>Network interfaces</strong></td>
+<td>IP addresses, ports, routing tables</td>
+</tr>
+<tr>
+<td><strong>Mount points</strong></td>
+<td>Which filesystems are mounted where (like <code>/</code>, <code>/home</code>, <code>/proc</code>)</td>
+</tr>
+<tr>
+<td><strong>Hostname</strong></td>
+<td>The machine&#39;s name</td>
+</tr>
+<tr>
+<td><strong>User/group IDs</strong></td>
+<td>Who &quot;root&quot; is, which users exist</td>
+</tr>
+<tr>
+<td><strong>Inter-process communication (IPC)</strong></td>
+<td>Shared memory, message queues between processes</td>
+</tr>
+</tbody></table>
+<p><img src="https://calligra.dev/images/blog/kernel-namespaces-explained-how-docker-containers-are-isolated/asset-1.png" alt="Blog Asset"></p>
+<p>There is 8th Kernel namespace <strong>time</strong>, which lets a container have its own view of <code>CLOCK_MONOTONIC</code>/<code>CLOCK_BOOTTIME</code>. Docker doesn&#39;t use it by default,</p>
+<h2>Let’s create a new Namespaces:</h2>
+<p>creating new namespace to run your apps inside it, it’s really easy! really easy? yes, just with running a command and passing arguments.</p>
+<p><strong>Let&#39;s create a new Namespace:</strong></p>
+<p>Creating a new namespace to run your app inside it is really easy — just one command with the right flags. Linux gives us the <code>unshare</code> command for exactly this.</p>
+<p>bash</p>
+<pre>sudo unshare --uts --pid --mount --fork bash</pre><p>What just happened:</p>
+<ul>
+<li><code>-uts</code> — new UTS namespace (isolated hostname)</li>
+<li><code>-pid</code> — new PID namespace (isolated process tree)</li>
+<li><code>-mount</code> — new mount namespace (isolated filesystem mounts)</li>
+<li><code>-fork</code> — forks a new process before running the command, which is required when using <code>-pid</code> (the shell itself can&#39;t become PID 1 in the new namespace without forking)</li>
+</ul>
+<p>You&#39;re now inside a shell running in three brand-new namespaces. Try this:</p>
+<p>bash</p>
+<pre>hostname container1
+hostname
+# container1</pre><p>Open a second terminal on the host and run <code>hostname</code> there — it still shows the original hostname. The change only exists inside your new UTS namespace. That&#39;s the whole trick: same kernel, same machine, but a different <em>view</em> of the system depending on which namespace a process belongs to.</p>
+<p>Now check the process tree from inside:</p>
+<p>bash</p>
+<pre>ps aux</pre><p>You&#39;ll see a tiny process list — because this is a fresh PID namespace, and your <code>bash</code> is PID 1 in it, even though on the host it has some completely different PID.</p>
+<p>You can confirm which namespaces a process belongs to by looking at <code>/proc/&lt;pid&gt;/ns/</code>:</p>
+<p>bash</p>
+<pre>ls -l /proc/$$/ns</pre><p>Each entry is a symlink like <code>uts:[4026532345]</code> — that number is the namespace ID. Two processes sharing the same ID are in the same namespace; different IDs mean they&#39;re isolated from each other, even if they&#39;re running on the same physical machine at the same moment.</p>
+<p>This is exactly what Docker does under the hood when it starts a container — just with more namespace types combined at once (<code>net</code>, <code>ipc</code>, <code>cgroup</code>, and optionally <code>user</code>), plus OverlayFS for the filesystem layer you already covered.</p>
+<p>Now let’s create namespace by each kernel namespace we know and at the end put them all together!</p>
+<h3>1. UTS namespace — hostname</h3>
+<pre>sudo unshare --uts --fork bashhostname container-utshostname# container-uts</pre><p>Open a second terminal on the host and run <code>hostname</code> — still shows the original name. Only the process inside the new UTS namespace sees the change.</p>
+<h3>2. PID namespace — process tree</h3>
+<pre>sudo unshare --pid --fork --mount-proc bashecho $$# 1ps aux</pre><p>Note the <code>--mount-proc</code> — without it, <code>ps</code> still reads the host&#39;s <code>/proc</code>, so you&#39;d see the host&#39;s full process list even though your PIDs are technically isolated. <code>--mount-proc</code> remounts <code>/proc</code> for the new namespace so <code>ps</code> shows only what&#39;s actually inside it.</p>
+<h3>3. Mount namespace — filesystem mounts</h3>
+<pre>sudo unshare --mount bashmkdir -p /tmp/mynsmount -t tmpfs tmpfs /tmp/mynsmount | grep myns</pre><p>Check <code>mount | grep myns</code> in a host terminal — nothing there. The mount only exists inside this namespace.</p>
+<h3>4. Network namespace — network stack</h3>
+<pre>sudo unshare --net baship addr# only "lo", and it's DOWNip link set lo upping -c1 127.0.0.1</pre><p>A brand new net namespace starts with zero interfaces except a loopback that isn&#39;t even up yet — no eth0, no routes, nothing inherited from the host. This is why Docker has to wire up a veth pair to give a container real connectivity.</p>
+<h3>5. IPC namespace — shared memory / message queues</h3>
+<pre>sudo unshare --ipc bashipcs -m</pre><p>Compare with <code>ipcs -m</code> on the host. Any shared memory segment created inside this namespace is invisible outside it, and vice versa — two processes can&#39;t accidentally step on each other&#39;s shared memory just because they&#39;re on the same machine.</p>
+<h3>6. User namespace — UID/GID mapping</h3>
+<pre>unshare --user --map-root-user bashwhoami# rootid</pre><p>No <code>sudo</code> needed for this one. Inside, you&#39;re &quot;root&quot; (UID 0), but check <code>id</code> from the host side (e.g. <code>cat /proc/&lt;pid&gt;/status | grep Uid</code>) — you&#39;re still your normal unprivileged UID there. This is the mapping trick rootless containers rely on.</p>
+<h3>7. Cgroup namespace — view of the cgroup hierarchy</h3>
+<pre>sudo unshare --cgroup --fork bashcat /proc/self/cgroup</pre><p>This one doesn&#39;t limit resources (that&#39;s cgroups themselves, next post) — it just changes what a process <em>sees</em> as its cgroup root, so it can&#39;t see or navigate to sibling/parent cgroups on the host.</p>
+<hr>
+<p>One small addition worth considering for the post: your combined example (<code>--uts --pid --mount --fork</code>) is a great &quot;put it all together&quot; moment — maybe keep it, but move it <em>after</em> these seven, as the payoff once each piece has been shown solo.</p>
+<h3>Putting it all together</h3>
+<pre>sudo unshare --uts --pid --mount --net --ipc --cgroup --fork --mount-proc bash</pre><p>That&#39;s six namespaces created at once for this one shell (<code>user</code> isn&#39;t included here — see the note below). Now let&#39;s poke around and confirm each one actually took effect:</p>
+<pre>hostname container1hostname# container1echo $$# 1ip addr# only "lo", DOWNip link set lo upps aux# tiny process list, just your shell and its childrenipcs -m# empty — fresh IPC namespacecat /proc/self/cgroup# your own cgroup root, not the host's</pre><p>Open a second terminal on the host and run the same commands — different hostname, full process list, real network interfaces, host&#39;s cgroup path. Same kernel, same machine, two completely different <em>views</em> of the system.</p>
+<p>You can also confirm it from the outside — grab the PID of your namespaced bash and compare namespace IDs:</p>
+<p>bash</p>
+<pre>ls -l /proc/<pid>/ns</pre><p>Every symlink (<code>uts</code>, <code>pid</code>, <code>mnt</code>, <code>net</code>, <code>ipc</code>, <code>cgroup</code>) will show a different inode number than the equivalent one for a host process — that number <em>is</em> the namespace, and mismatched numbers mean isolation.</p>
+<p><strong>Note on</strong> <strong><code>user</code>****:</strong> it&#39;s the trickiest one to combine because it changes what &quot;privileged&quot; even means for the rest of the command — added on its own it&#39;s usually paired with <code>--map-root-user</code> and run unprivileged, but stacking it with the others while running as root (via <code>sudo</code>) needs a bit more care around UID/GID mapping than fits cleanly here. Worth calling out as &quot;the namespace we&#39;re deliberately leaving for its own deeper dive&quot; rather than squeezing it in.</p>
+<p>This six-namespace combo — plus OverlayFS for the filesystem (previous post) and cgroups for resource limits (next post) — is basically the whole recipe Docker follows to make a container feel like its own machine.</p>
+<h1>The End:</h1>
+<p>how to create an isolated environment (Namespaces), they will naturally ask, <em>&quot;But what stops this process from consuming all the host&#39;s memory?”</em></p>
+<p>your answer will be in the next post on CGroups.</p>
+
+</body>
+</html>
